@@ -1,0 +1,48 @@
+name: Collect and Test VPN Sources
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run collector -> filter -> ping -> dns
+        run: |
+          python scripts/collect_sources.py
+          python scripts/filter_clean.py
+          python scripts/ping_test.py
+          python scripts/dns_test.py
+          python scripts/build_raw_list.py
+
+      - name: Commit updated raw list
+        run: |
+          git config user.name "koteito-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add output/raw_servers.txt
+          git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление raw_servers.txt"
+          git push
+
+      - name: Notify Telegram on failure
+        if: ${{ failure() && secrets.TELEGRAM_BOT_TOKEN != '' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="❌ KoteitoVPN: collect_and_test упал. Смотри лог: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
