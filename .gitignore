@@ -1,0 +1,8 @@
+raw_configs.json
+clean_configs.json
+pinged_configs.json
+dns_checked_configs.json
+geo_configs.json
+masked_configs.json
+__pycache__/
+*.pyc
