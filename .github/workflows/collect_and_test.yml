@@ -38,11 +38,15 @@ jobs:
           git push
 
       - name: Notify Telegram on failure
-        if: ${{ failure() && secrets.TELEGRAM_BOT_TOKEN != '' }}
+        if: failure()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "TELEGRAM_BOT_TOKEN не задан — пропускаем уведомление."
+            exit 0
+          fi
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d text="❌ KoteitoVPN: collect_and_test упал. Смотри лог: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
