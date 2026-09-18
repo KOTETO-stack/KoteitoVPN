@@ -1,15 +1,15 @@
-name: Collect and Test VPN Sources
+name: Build Final Subscription
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "20 */6 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 jobs:
-  collect:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -21,20 +21,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run collector -> filter -> ping -> dns
+      - name: Rebuild pipeline from raw_servers.txt and run geo/mask stage
         run: |
-          python scripts/collect_sources.py
+          python scripts/raw_to_json.py
           python scripts/filter_clean.py
           python scripts/ping_test.py
           python scripts/dns_test.py
-          python scripts/build_raw_list.py
+          python scripts/geo_flag.py
+          python scripts/xray_mask.py
+          python scripts/build_subscription.py
 
-      - name: Commit updated raw list
+      - name: Commit updated subscription
         run: |
           git config user.name "koteito-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add output/raw_servers.txt
-          git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление raw_servers.txt"
+          git add output/subscription.txt output/subscription_readable.txt
+          git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление subscription.txt"
           git push
 
       - name: Notify Telegram on failure
@@ -49,4 +51,4 @@ jobs:
           fi
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="❌ KoteitoVPN: collect_and_test упал. Смотри лог: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            -d text="❌ KoteitoVPN: build_subscription упал. Смотри лог: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
