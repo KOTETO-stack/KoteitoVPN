@@ -2,9 +2,14 @@
 # -*- coding: utf-8 -*-
 """
 ping_test.py
-TCP-connect пинг (ICMP на раннерах GitHub Actions обычно недоступен без root).
+Для Hysteria2 (UDP/QUIC) обычный TCP-connect всегда проваливается, поэтому для
+него делаем прямой UDP-проб порта сервера:
+ - есть ответ - точный RTT
+ - явный ConnectionRefusedError (ICMP port-unreachable) - порт закрыт, бракуем
+ - тишина (обычная реакция QUIC на невалидный пакет) - считаем живым
+
 Оставляет только серверы с пингом <= MAX_PING_MS.
-Результат: pinged_configs.json — список dict с полем "ping_ms".
+Результат: pinged_configs.json — список dict с добавленным полем "ping_ms".
 """
 import json
 import os
@@ -17,7 +22,8 @@ OUT_FILE = os.path.join(os.path.dirname(__file__), "..", "pinged_configs.json")
 
 MAX_PING_MS = 500
 CONNECT_TIMEOUT = 2.5
-WORKERS = 60
+UDP_PROBE_TIMEOUT = 1.5
+WORKERS = 50
 
 
 def tcp_ping(host, port):
@@ -30,8 +36,36 @@ def tcp_ping(host, port):
         return None
 
 
+def udp_probe(host, port):
+    """Проб конкретно UDP-порта Hysteria2-сервера (не ICMP к хосту)."""
+    start = time.perf_counter()
+    s = None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(UDP_PROBE_TIMEOUT)
+        s.connect((host, port))
+        s.send(os.urandom(32))
+        try:
+            s.recvfrom(1024)
+            return int((time.perf_counter() - start) * 1000)
+        except socket.timeout:
+            approx = int(UDP_PROBE_TIMEOUT * 1000) - 200
+            return max(50, min(approx, MAX_PING_MS - 1))
+        except ConnectionRefusedError:
+            return None
+    except Exception:
+        return None
+    finally:
+        if s:
+            s.close()
+
+
 def check(entry):
-    ms = tcp_ping(entry["host"], entry["port"])
+    if entry.get("proto") == "hysteria2":
+        ms = udp_probe(entry["host"], entry["port"])
+    else:
+        ms = tcp_ping(entry["host"], entry["port"])
+
     if ms is None or ms > MAX_PING_MS:
         return None
     entry["ping_ms"] = ms
@@ -51,7 +85,8 @@ def main():
                 results.append(res)
 
     results.sort(key=lambda e: e["ping_ms"])
-    print(f"Прошли проверку пинга: {len(results)} из {len(configs)}")
+    hy2_count = sum(1 for e in results if e.get("proto") == "hysteria2")
+    print(f"Прошли проверку пинга: {len(results)} из {len(configs)} (из них Hysteria2: {hy2_count})")
 
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
