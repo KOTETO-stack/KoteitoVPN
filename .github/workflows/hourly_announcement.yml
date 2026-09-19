@@ -1,0 +1,28 @@
+name: Hourly Telegram Announcement
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # каждый час
+  workflow_dispatch: {}
+
+permissions:
+  contents: read   # только читаем, ничего не коммитим - писать сюда не нужно
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Send hourly status to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/announce_status.py
