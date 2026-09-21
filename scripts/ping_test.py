@@ -548,7 +548,9 @@ def main():
     elif not os.path.exists(SINGBOX_BIN):
         print("⚠️ sing-box не найден (%s) — используем результат этапа 1." % SINGBOX_BIN)
     else:
-        candidates = quick[:MAX_REAL_TEST]
+        hy2 = [e for e in quick if e.get("proto") == "hysteria2"]
+        other = [e for e in quick if e.get("proto") != "hysteria2"]
+        candidates = other[:MAX_REAL_TEST - 400] + hy2[:400]
         print("Этап 2: реальный тест через sing-box для %d серверов..." % len(candidates))
         passed, stats = real_test(candidates)
         print("Этап 2: проверено %(tested)d, прошли %(passed)d, не поддерживается %(unsupported)d, "
