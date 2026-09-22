@@ -1,1 +1,54 @@
-git add sources.txt candidate_sources.txt → git add sources.txt candidate_sources.txt candidate_fail_counts.json
+name: Expand Sources
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: koteito-vpn-write
+  cancel-in-progress: false
+
+jobs:
+  expand:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Promote candidate sources
+        run: |
+          python scripts/promote_candidates.py
+
+      - name: Commit updated sources
+        run: |
+          git config user.name "koteito-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add sources.txt candidate_sources.txt candidate_fail_counts.json
+          git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление sources.txt"
+          git fetch origin main
+          git merge -X ours --no-edit origin/main
+          git push
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "TELEGRAM_BOT_TOKEN не задан — пропускаем уведомление."
+            exit 0
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="❌ KoteitoVPN: expand_sources упал. Смотри лог: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
