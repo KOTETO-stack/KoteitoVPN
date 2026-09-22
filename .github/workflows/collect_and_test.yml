@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: koteito-vpn-write
+  cancel-in-progress: false
+
 jobs:
   collect:
     runs-on: ubuntu-latest
@@ -20,6 +24,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Install sing-box
+        run: |
+          TAG=$(git ls-remote --tags --refs https://github.com/SagerNet/sing-box 'refs/tags/v1.12.*' | sed 's#.*refs/tags/##' | grep -E '^v1\.12\.[0-9]+$' | sort -V | tail -1)
+          echo "sing-box $TAG"
+          mkdir -p /tmp/sb
+          curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${TAG#v}-linux-amd64.tar.gz" | tar -xz -C /tmp/sb --strip-components=1
+          sudo install -m 755 /tmp/sb/sing-box /usr/local/bin/sing-box
+          sing-box version
 
       - name: Run collector -> filter -> ping -> dns
         run: |
@@ -35,7 +48,8 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add output/raw_servers.txt
           git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление raw_servers.txt"
-          git pull --rebase --autostash
+          git fetch origin main
+          git merge -X ours --no-edit origin/main
           git push
 
       - name: Notify Telegram on failure
