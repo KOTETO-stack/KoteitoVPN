@@ -5,7 +5,9 @@ build_subscription.py
 Финальный шаг workflow №2:
  - сортирует по пингу с бонусом для Reality (устойчивее к DPI - при близком
    пинге приоритет ему, а не просто "кто на 5мс быстрее")
- - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. ниже, почему)
+ - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение ниже)
+ - не даёт одной стране занять больше MAX_PER_COUNTRY мест (иначе близкие к
+   GitHub-раннеру страны, например Канада, вымывают все остальные)
  - берёт не больше MAX_SERVERS
  - переименовывает remark в "Страна Город Флаг"
  - кодирует итоговый список в base64 (стандартный формат подписки для Karing/Hiddyfi/v2rayNG)
@@ -17,9 +19,16 @@ build_subscription.py
  порта - если сервер не отвечает мгновенно (частый случай для QUIC), в
  ping_ms подставляется значение около 499 мс (почти MAX_PING_MS). Из-за этого
  при простой сортировке по ping_ms все Hysteria2-сервера проваливаются в
- конец списка и не попадают в топ MAX_SERVERS, даже если они реально прошли
- тест через sing-box на этапе 2 (real_ms). Резерв не даёт протоколу целиком
- вымыться из подписки из-за особенностей этой метрики.
+ конец списка. Резерв не даёт протоколу целиком вымыться из подписки.
+
+Про лимит на страну:
+ GitHub-раннеры физически ближе к Канаде/США, поэтому пинг оттуда почти
+ всегда ниже - без лимита подписка на 80%+ состоит из одной-двух стран.
+ country_code - надёжное поле от geo_flag.py (двухбуквенный ISO-код),
+ используется как ключ лимита вместо строкового имени страны.
+ Если суммарно уникальных стран меньше MAX_SERVERS / MAX_PER_COUNTRY, в
+ подписку войдёт меньше MAX_SERVERS серверов - это ожидаемо: лучше меньше,
+ но разных, чем ровно 200 за счёт добивания той же Канадой.
 """
 import base64
 import json
@@ -31,9 +40,10 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 OUT_SUB = os.path.join(OUT_DIR, "subscription.txt")
 OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
 
-MAX_SERVERS = 150
+MAX_SERVERS = 200
 REALITY_BONUS_MS = 50
-HY2_MIN_SERVERS = 30  # минимум мест для Hysteria2 в топ-150, см. пояснение выше
+HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке
+MAX_PER_COUNTRY = 10    # не больше стольких серверов на одну страну
 
 
 def rename_uri(raw: str, display_name: str) -> str:
@@ -48,18 +58,42 @@ def sort_key(c):
 
 
 def select_with_quota(configs):
-    """Топ MAX_SERVERS по sort_key, но не меньше HY2_MIN_SERVERS лучших Hysteria2,
-    если их вообще столько набралось."""
+    """Топ MAX_SERVERS по sort_key, с резервом мест под Hysteria2 и лимитом
+    MAX_PER_COUNTRY серверов на одну страну (country_code)."""
     configs = sorted(configs, key=sort_key)
 
-    hy2 = [c for c in configs if c.get("proto") == "hysteria2"]
-    reserved = hy2[:HY2_MIN_SERVERS]
-    reserved_ids = {id(c) for c in reserved}
+    country_count = {}
+    hy2_count = 0
+    selected = []
+    selected_ids = set()
 
-    rest = [c for c in configs if id(c) not in reserved_ids]
-    remaining_slots = max(0, MAX_SERVERS - len(reserved))
+    # Проход 1: резервируем лучшие Hysteria2, тоже уважая лимит на страну.
+    for c in configs:
+        if len(selected) >= MAX_SERVERS or hy2_count >= HY2_MIN_SERVERS:
+            break
+        if c.get("proto") != "hysteria2":
+            continue
+        cc = c.get("country_code", "??")
+        if country_count.get(cc, 0) >= MAX_PER_COUNTRY:
+            continue
+        selected.append(c)
+        selected_ids.add(id(c))
+        country_count[cc] = country_count.get(cc, 0) + 1
+        hy2_count += 1
 
-    selected = reserved + rest[:remaining_slots]
+    # Проход 2: заполняем остальные места лучшими по sort_key, уважая тот же лимит.
+    for c in configs:
+        if len(selected) >= MAX_SERVERS:
+            break
+        if id(c) in selected_ids:
+            continue
+        cc = c.get("country_code", "??")
+        if country_count.get(cc, 0) >= MAX_PER_COUNTRY:
+            continue
+        selected.append(c)
+        selected_ids.add(id(c))
+        country_count[cc] = country_count.get(cc, 0) + 1
+
     selected.sort(key=sort_key)
     return selected
 
@@ -87,8 +121,10 @@ def main():
 
     reality_count = sum(1 for c in configs if c.get("security_tag") == "reality")
     hy2_count = sum(1 for c in configs if c.get("proto") == "hysteria2")
+    countries_count = len({c.get("country_code", "??") for c in configs})
     print(f"В финальную подписку вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
-          f"из них Reality: {reality_count}, Hysteria2: {hy2_count}.")
+          f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, стран: {countries_count} "
+          f"(лимит {MAX_PER_COUNTRY} на страну).")
     print(f"Файл подписки: {OUT_SUB}")
 
 
