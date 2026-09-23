@@ -157,3 +157,4 @@ https://raw.githubusercontent.com/w1770946466/Auto_proxy/main/Long_term_subscrip
 https://raw.githubusercontent.com/w1770946466/Auto_proxy/main/Long_term_subscription2
 https://raw.githubusercontent.com/xiaoji235/airport-free/main/v2ray.txt
 https://raw.githubusercontent.com/yaney01/Yaney01/main/2
+https://raw.githubusercontent.com/Mosifree/-FREE2CONFIG/refs/heads/main/Reality
