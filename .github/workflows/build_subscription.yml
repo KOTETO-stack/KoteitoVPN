@@ -1,77 +1,152 @@
-name: Build Final Subscription
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+build_subscription.py
+Финальный шаг workflow №2:
+ - сортирует по пингу с бонусами для Reality и для "стабильных" транспортов
+   (XHTTP/gRPC/WS — по наблюдениям сообщества эти транспорты меньше похожи
+   на детектируемый VPN-туннель, см. пояснение ниже)
+ - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение)
+ - не даёт одной стране занять больше MAX_PER_COUNTRY мест
+ - берёт не больше MAX_SERVERS
+ - переименовывает remark в "Страна Город Флаг"
+ - кодирует итоговый список в base64 (стандартный формат подписки для Karing/Hiddyfi/v2rayNG)
+ - пишет output/subscription.txt (то, на что будет указывать финальная ссылка подписки)
+ - также пишет output/subscription_readable.txt (для проверки человеком, без base64)
 
-on:
-  schedule:
-    - cron: "20 * * * *"
-  workflow_dispatch: {}
+Про резерв для Hysteria2:
+ ping_test.py на этапе 1 делает для Hysteria2 не настоящий пинг, а UDP-проб
+ порта - если сервер не отвечает мгновенно (частый случай для QUIC), в
+ ping_ms подставляется значение около 499 мс (почти MAX_PING_MS). Из-за этого
+ при простой сортировке по ping_ms все Hysteria2-сервера проваливаются в
+ конец списка. Резерв не даёт протоколу целиком вымыться из подписки.
 
-permissions:
-  contents: write
+Про лимит на страну:
+ GitHub-раннеры физически ближе к Канаде/США, поэтому пинг оттуда почти
+ всегда ниже - без лимита подписка на 80%+ состоит из одной-двух стран.
 
-concurrency:
-  group: koteito-vpn-write
-  cancel-in-progress: false
+Про бонус за транспорт:
+ Никакой конфиг не гарантированно проходит везде - это физическое
+ ограничение, а не пробел в скрипте (см. обсуждение в чате). Но по общим
+ наблюдениям сообщества (например, README проекта igareck/vpn-configs-for-russia)
+ транспорты XHTTP, gRPC и WS в среднем стабильнее "голого" TLS. Этот бонус
+ — небольшая (не решающая) добавка к сортировке, меньше бонуса Reality,
+ которая слегка приподнимает такие конфиги при равном пинге.
+"""
+import base64
+import json
+import os
+import re
+import urllib.parse
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+IN_FILE = os.path.join(os.path.dirname(__file__), "..", "masked_configs.json")
+OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
+OUT_SUB = os.path.join(OUT_DIR, "subscription.txt")
+OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+MAX_SERVERS = 200
+REALITY_BONUS_MS = 50
+TRANSPORT_BONUS_MS = 20  # для type=xhttp/grpc/ws — меньше REALITY_BONUS_MS, это вторичный фактор
+STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
+HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке
+MAX_PER_COUNTRY = 10    # не больше стольких серверов на одну страну
 
-      - name: Install sing-box
-        run: |
-          TAG=$(git ls-remote --tags --refs https://github.com/SagerNet/sing-box 'refs/tags/v1.12.*' | sed 's#.*refs/tags/##' | grep -E '^v1\.12\.[0-9]+$' | sort -V | tail -1)
-          echo "sing-box $TAG"
-          mkdir -p /tmp/sb
-          curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${TAG#v}-linux-amd64.tar.gz" | tar -xz -C /tmp/sb --strip-components=1
-          sudo install -m 755 /tmp/sb/sing-box /usr/local/bin/sing-box
-          sing-box version
+TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
-      - name: Rebuild pipeline from raw_servers.txt and run geo/mask stage
-        run: |
-          python scripts/raw_to_json.py
-          python scripts/filter_clean.py
-          python scripts/ping_test.py
-          python scripts/dns_test.py
-          python scripts/geo_flag.py
-          python scripts/xray_mask.py
-          python scripts/build_subscription.py
-          python scripts/build_ad_block_rules.py
-          python scripts/build_status_page.py
 
-      - name: Commit updated subscription
-        run: |
-          git config user.name "koteito-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add output/subscription.txt output/subscription_readable.txt output/ad_block_rules.txt docs/
-          git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление subscription.txt"
-          git fetch origin main
-          git merge -X ours --no-edit origin/main
-          git push
+def rename_uri(raw: str, display_name: str) -> str:
+    base = raw.split("#", 1)[0]
+    return f"{base}#{urllib.parse.quote(display_name)}"
 
-      - name: Send status to Telegram
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python3 scripts/announce_status.py
 
-      - name: Notify Telegram on failure
-        if: failure()
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
-            echo "TELEGRAM_BOT_TOKEN не задан — пропускаем уведомление."
-            exit 0
-          fi
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="❌ KoteitoVPN: build_subscription упал. Смотри лог: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+def extract_transport(raw: str) -> str:
+    """Достаёт значение параметра type= из самой ссылки, без парсинга всей URI."""
+    m = TYPE_RE.search(raw)
+    return m.group(1).lower() if m else ""
+
+
+def sort_key(c):
+    ping = c.get("ping_ms", 9999)
+    bonus = REALITY_BONUS_MS if c.get("security_tag") == "reality" else 0
+    if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS:
+        bonus += TRANSPORT_BONUS_MS
+    return ping - bonus
+
+
+def select_with_quota(configs):
+    """Топ MAX_SERVERS по sort_key, с резервом мест под Hysteria2 и лимитом
+    MAX_PER_COUNTRY серверов на одну страну (country_code)."""
+    configs = sorted(configs, key=sort_key)
+
+    country_count = {}
+    hy2_count = 0
+    selected = []
+    selected_ids = set()
+
+    # Проход 1: резервируем лучшие Hysteria2, тоже уважая лимит на страну.
+    for c in configs:
+        if len(selected) >= MAX_SERVERS or hy2_count >= HY2_MIN_SERVERS:
+            break
+        if c.get("proto") != "hysteria2":
+            continue
+        cc = c.get("country_code", "??")
+        if country_count.get(cc, 0) >= MAX_PER_COUNTRY:
+            continue
+        selected.append(c)
+        selected_ids.add(id(c))
+        country_count[cc] = country_count.get(cc, 0) + 1
+        hy2_count += 1
+
+    # Проход 2: заполняем остальные места лучшими по sort_key, уважая тот же лимит.
+    for c in configs:
+        if len(selected) >= MAX_SERVERS:
+            break
+        if id(c) in selected_ids:
+            continue
+        cc = c.get("country_code", "??")
+        if country_count.get(cc, 0) >= MAX_PER_COUNTRY:
+            continue
+        selected.append(c)
+        selected_ids.add(id(c))
+        country_count[cc] = country_count.get(cc, 0) + 1
+
+    selected.sort(key=sort_key)
+    return selected
+
+
+def main():
+    os.makedirs(OUT_DIR, exist_ok=True)
+    with open(IN_FILE, "r", encoding="utf-8") as f:
+        configs = json.load(f)
+
+    configs = select_with_quota(configs)
+
+    final_lines = []
+    for c in configs:
+        display_name = c.get("display_name") or c.get("remark") or "VPN"
+        final_lines.append(rename_uri(c["raw"], display_name))
+
+    body = "\n".join(final_lines)
+
+    with open(OUT_READABLE, "w", encoding="utf-8") as f:
+        f.write(body + "\n")
+
+    encoded = base64.b64encode(body.encode("utf-8")).decode("utf-8")
+    with open(OUT_SUB, "w", encoding="utf-8") as f:
+        f.write(encoded)
+
+    reality_count = sum(1 for c in configs if c.get("security_tag") == "reality")
+    hy2_count = sum(1 for c in configs if c.get("proto") == "hysteria2")
+    stable_transport_count = sum(
+        1 for c in configs if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS
+    )
+    countries_count = len({c.get("country_code", "??") for c in configs})
+    print(f"В финальную подписку вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
+          f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
+          f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
+          f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
+    print(f"Файл подписки: {OUT_SUB}")
+
+
+if __name__ == "__main__":
+    main()
