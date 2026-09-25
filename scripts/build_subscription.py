@@ -3,6 +3,8 @@
 """
 build_subscription.py
 Финальный шаг workflow №2:
+ - исключает серверы с country_code из EXCLUDED_COUNTRIES (по умолчанию
+   Россия — сервер внутри РФ не помогает обойти блокировки РКН, см. пояснение)
  - сортирует по пингу с бонусами для Reality и для "стабильных" транспортов
    (XHTTP/gRPC/WS — по наблюдениям сообщества эти транспорты меньше похожи
    на детектируемый VPN-туннель, см. пояснение ниже)
@@ -11,25 +13,29 @@ build_subscription.py
    (на чём построен Hysteria2), чем TCP:443+TLS (см. пояснение ниже)
  - учитывает подтверждения "работает" от небольшой доверенной группы людей,
    собранные collect_reports.py из Telegram (см. пояснение ниже)
- - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение)
- - не даёт одной стране занять больше MAX_PER_COUNTRY мест
+ - НЕ резервирует фиксированное количество мест под какой-либо протокол —
+   протоколы набираются естественно, по реальному рейтингу
+ - не даёт одной стране занять больше MAX_PER_COUNTRY мест (это единственный
+   фиксированный лимит распределения)
  - берёт не больше MAX_SERVERS
- - переименовывает remark в "Страна Город Флаг" (Hysteria2 дополнительно
-   помечается "⚠️WiFi", подтверждённые отзывом серверы — "✅")
+ - переименовывает remark в "Страна Город Флаг" (подтверждённые отзывом
+   серверы дополнительно помечаются "✅")
  - кодирует итоговый список в base64 (стандартный формат подписки для Karing/Hiddyfi/v2rayNG)
  - пишет output/subscription.txt (то, на что будет указывать финальная ссылка подписки)
  - также пишет output/subscription_readable.txt (для проверки человеком, без base64)
 
-Про резерв для Hysteria2:
- ping_test.py на этапе 1 делает для Hysteria2 не настоящий пинг, а UDP-проб
- порта - если сервер не отвечает мгновенно (частый случай для QUIC), в
- ping_ms подставляется значение около 499 мс (почти MAX_PING_MS). Из-за этого
- при простой сортировке по ping_ms все Hysteria2-сервера проваливаются в
- конец списка. Резерв не даёт протоколу целиком вымыться из подписки.
+Про исключение России:
+ Цель подписки — обход блокировок Роскомнадзора внутри РФ. Сервер, который
+ сам физически находится в России, не даёт этого сделать: трафик до него
+ всё равно идёт через российскую сеть и попадает под те же DPI-блокировки,
+ которые подписка должна обходить. Поэтому такие серверы отсеиваются на
+ этом шаге целиком, независимо от пинга или протокола.
 
 Про лимит на страну:
  GitHub-раннеры физически ближе к Канаде/США, поэтому пинг оттуда почти
  всегда ниже - без лимита подписка на 80%+ состоит из одной-двух стран.
+ Это единственный фиксированный лимит распределения — количество серверов
+ по протоколам сознательно не фиксируется (см. выше).
 
 Про бонус за транспорт:
  Никакой конфиг не гарантированно проходит везде - это физическое
@@ -40,11 +46,11 @@ build_subscription.py
  которая слегка приподнимает такие конфиги при равном пинге.
 
 Про бонус за сотовую сеть (CELLULAR_BONUS_MS):
- Это тоже физическое ограничение сети, а не баг сервера или скрипта.
- Hysteria2 работает через UDP/QUIC, и на сотовых сетях РФ это чаще всего
- душится сильнее, чем TCP:443+TLS. Бонус не убирает Hysteria2 из подписки
- (резерв HY2_MIN_SERVERS сохранён без изменений) — он просто поднимает
- vless/trojan выше при прочих равных.
+ Это физическое ограничение сети, а не баг сервера или скрипта. Hysteria2
+ работает через UDP/QUIC, и на сотовых сетях РФ это чаще всего душится
+ сильнее, чем TCP:443+TLS. Бонус не убирает Hysteria2 из подписки — он
+ просто поднимает vless/trojan выше при прочих равных, независимо от того,
+ подписаны ли они как "только WiFi" в названии или нет.
 
 Про подтверждения пользователей (REPORT_BONUS_MS):
  igareck/vpn-configs-for-russia тестирует серверы с сервера внутри России —
@@ -53,10 +59,9 @@ build_subscription.py
  пользователь. Поэтому вместо автотеста "изнутри" используется подтверждение
  небольшой доверенной группы людей (см. collect_reports.py): кто-то реально
  открыл сервер на своём телефоне/WiFi в России и написал боту его имя.
- Про сервера, которые НЕ открылись, писать не нужно — учитываются только
- подтверждения "работает". Подтверждение актуально REPORT_TTL_HOURS часов —
- дальше считается устаревшим, потому что публичный сервер под тем же именем
- может со временем смениться.
+ Подтверждение актуально REPORT_TTL_HOURS часов — дальше считается
+ устаревшим, потому что публичный сервер под тем же именем может со
+ временем смениться.
 """
 import base64
 import json
@@ -77,8 +82,8 @@ TRANSPORT_BONUS_MS = 20  # для type=xhttp/grpc/ws — меньше REALITY_BO
 CELLULAR_BONUS_MS = 80   # бонус TCP-based протоколам (vless/trojan) — устойчивее на сотовой,
                           # т.к. UDP/QUIC (Hysteria2) чаще душится операторами РФ на мобильной сети
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке — не уменьшено
-MAX_PER_COUNTRY = 10    # не больше стольких серверов на одну страну
+MAX_PER_COUNTRY = 10      # единственный фиксированный лимит — не больше стольких серверов на страну
+EXCLUDED_COUNTRIES = {"RU"}  # серверы внутри России не помогают обходить блокировки РКН
 
 REPORT_BONUS_MS = 150    # больше REALITY_BONUS_MS — подтверждённый человеком сервер важнее
 REPORT_TTL_HOURS = 48    # сколько часов подтверждение считается актуальным
@@ -138,43 +143,24 @@ def make_sort_key(reports, now):
 
 
 def select_with_quota(configs, sort_key):
-    """Топ MAX_SERVERS по sort_key, с резервом мест под Hysteria2 и лимитом
-    MAX_PER_COUNTRY серверов на одну страну (country_code)."""
+    """Топ MAX_SERVERS по sort_key, с единственным лимитом MAX_PER_COUNTRY
+    серверов на одну страну (country_code). Количество серверов по
+    протоколам не резервируется и не фиксируется."""
+    configs = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
     configs = sorted(configs, key=sort_key)
 
     country_count = {}
-    hy2_count = 0
     selected = []
-    selected_ids = set()
 
-    # Проход 1: резервируем лучшие Hysteria2, тоже уважая лимит на страну.
-    for c in configs:
-        if len(selected) >= MAX_SERVERS or hy2_count >= HY2_MIN_SERVERS:
-            break
-        if c.get("proto") != "hysteria2":
-            continue
-        cc = c.get("country_code", "??")
-        if country_count.get(cc, 0) >= MAX_PER_COUNTRY:
-            continue
-        selected.append(c)
-        selected_ids.add(id(c))
-        country_count[cc] = country_count.get(cc, 0) + 1
-        hy2_count += 1
-
-    # Проход 2: заполняем остальные места лучшими по sort_key, уважая тот же лимит.
     for c in configs:
         if len(selected) >= MAX_SERVERS:
             break
-        if id(c) in selected_ids:
-            continue
         cc = c.get("country_code", "??")
         if country_count.get(cc, 0) >= MAX_PER_COUNTRY:
             continue
         selected.append(c)
-        selected_ids.add(id(c))
         country_count[cc] = country_count.get(cc, 0) + 1
 
-    selected.sort(key=sort_key)
     return selected
 
 
@@ -193,9 +179,6 @@ def main():
     for c in configs:
         display_name = c.get("display_name") or c.get("remark") or "VPN"
         original_name = display_name
-
-        if c.get("proto") == "hysteria2":
-            display_name = f"{display_name} \u26a0\ufe0fWiFi"
 
         if is_confirmed(original_name, reports, now):
             display_name = f"{display_name} \u2705"
@@ -225,7 +208,8 @@ def main():
           f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
           f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
           f"подтверждено пользователями: {confirmed_count}, "
-          f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
+          f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну, "
+          f"исключены: {', '.join(sorted(EXCLUDED_COUNTRIES)) or 'нет'}).")
     print(f"Файл подписки: {OUT_SUB}")
 
 
