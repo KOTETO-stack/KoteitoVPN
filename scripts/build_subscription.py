@@ -6,10 +6,14 @@ build_subscription.py
  - сортирует по пингу с бонусами для Reality и для "стабильных" транспортов
    (XHTTP/gRPC/WS — по наблюдениям сообщества эти транспорты меньше похожи
    на детектируемый VPN-туннель, см. пояснение ниже)
+ - даёт дополнительный бонус всем TCP-based протоколам (vless/trojan) —
+   на сотовых сетях РФ операторы чаще и сильнее душат/дросселируют UDP/QUIC
+   (на чём построен Hysteria2), чем TCP:443+TLS (см. пояснение ниже)
  - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение)
  - не даёт одной стране занять больше MAX_PER_COUNTRY мест
  - берёт не больше MAX_SERVERS
- - переименовывает remark в "Страна Город Флаг"
+ - переименовывает remark в "Страна Город Флаг" (Hysteria2 дополнительно
+   помечается "⚠️WiFi", т.к. на сотовой сети менее надёжен)
  - кодирует итоговый список в base64 (стандартный формат подписки для Karing/Hiddyfi/v2rayNG)
  - пишет output/subscription.txt (то, на что будет указывать финальная ссылка подписки)
  - также пишет output/subscription_readable.txt (для проверки человеком, без base64)
@@ -32,6 +36,14 @@ build_subscription.py
  транспорты XHTTP, gRPC и WS в среднем стабильнее "голого" TLS. Этот бонус
  — небольшая (не решающая) добавка к сортировке, меньше бонуса Reality,
  которая слегка приподнимает такие конфиги при равном пинге.
+
+Про бонус за сотовую сеть (CELLULAR_BONUS_MS):
+ Это тоже физическое ограничение сети, а не баг сервера или скрипта.
+ Hysteria2 работает через UDP/QUIC, и на сотовых сетях РФ это чаще всего
+ душится сильнее, чем TCP:443+TLS. Бонус не убирает Hysteria2 из подписки
+ (резерв HY2_MIN_SERVERS сохранён без изменений) — он просто поднимает
+ vless/trojan выше при прочих равных, чтобы верхние позиции списка были
+ надёжнее именно на мобильном интернете.
 """
 import base64
 import json
@@ -47,8 +59,11 @@ OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
 MAX_SERVERS = 200
 REALITY_BONUS_MS = 50
 TRANSPORT_BONUS_MS = 20  # для type=xhttp/grpc/ws — меньше REALITY_BONUS_MS, это вторичный фактор
+CELLULAR_BONUS_MS = 80   # бонус TCP-based протоколам (vless/trojan) — устойчивее на сотовой,
+                          # т.к. UDP/QUIC (Hysteria2) чаще душится операторами РФ на мобильной сети
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке
+HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке — не уменьшено, протокол
+                          # остаётся полностью представлен (для WiFi/домашних сетей)
 MAX_PER_COUNTRY = 10    # не больше стольких серверов на одну страну
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
@@ -70,6 +85,8 @@ def sort_key(c):
     bonus = REALITY_BONUS_MS if c.get("security_tag") == "reality" else 0
     if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS:
         bonus += TRANSPORT_BONUS_MS
+    if c.get("proto") != "hysteria2":
+        bonus += CELLULAR_BONUS_MS
     return ping - bonus
 
 
@@ -124,6 +141,8 @@ def main():
     final_lines = []
     for c in configs:
         display_name = c.get("display_name") or c.get("remark") or "VPN"
+        if c.get("proto") == "hysteria2":
+            display_name = f"{display_name} ⚠️WiFi"
         final_lines.append(rename_uri(c["raw"], display_name))
 
     body = "\n".join(final_lines)
