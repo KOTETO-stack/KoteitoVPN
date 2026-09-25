@@ -9,13 +9,13 @@ build_subscription.py
  - даёт дополнительный бонус всем TCP-based протоколам (vless/trojan) —
    на сотовых сетях РФ операторы чаще и сильнее душат/дросселируют UDP/QUIC
    (на чём построен Hysteria2), чем TCP:443+TLS (см. пояснение ниже)
- - учитывает ручные отзывы "+/-" от небольшой доверенной группы людей,
+ - учитывает подтверждения "работает" от небольшой доверенной группы людей,
    собранные collect_reports.py из Telegram (см. пояснение ниже)
  - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение)
  - не даёт одной стране занять больше MAX_PER_COUNTRY мест
  - берёт не больше MAX_SERVERS
  - переименовывает remark в "Страна Город Флаг" (Hysteria2 дополнительно
-   помечается "⚠️WiFi", подтверждённые отзывом серверы — "✅" или "⚠️")
+   помечается "⚠️WiFi", подтверждённые отзывом серверы — "✅")
  - кодирует итоговый список в base64 (стандартный формат подписки для Karing/Hiddyfi/v2rayNG)
  - пишет output/subscription.txt (то, на что будет указывать финальная ссылка подписки)
  - также пишет output/subscription_readable.txt (для проверки человеком, без base64)
@@ -46,16 +46,17 @@ build_subscription.py
  (резерв HY2_MIN_SERVERS сохранён без изменений) — он просто поднимает
  vless/trojan выше при прочих равных.
 
-Про отзывы пользователей (REPORT_BONUS_MS / REPORT_PENALTY_MS):
+Про подтверждения пользователей (REPORT_BONUS_MS):
  igareck/vpn-configs-for-russia тестирует серверы с сервера внутри России —
  у нас такого сервера нет, GitHub Actions runner физически сидит за
  пределами РФ и не видит блокировки РКН так, как их видит реальный
- пользователь. Поэтому вместо автотеста "изнутри" используется отзыв
+ пользователь. Поэтому вместо автотеста "изнутри" используется подтверждение
  небольшой доверенной группы людей (см. collect_reports.py): кто-то реально
- открыл сервер на своём телефоне/WiFi в России и сообщил боту "+"/"-".
- Отзыв учитывается только REPORT_TTL_HOURS часов — дальше считается
- устаревшим, потому что публичный сервер под тем же именем может со
- временем смениться.
+ открыл сервер на своём телефоне/WiFi в России и написал боту его имя.
+ Про сервера, которые НЕ открылись, писать не нужно — учитываются только
+ подтверждения "работает". Подтверждение актуально REPORT_TTL_HOURS часов —
+ дальше считается устаревшим, потому что публичный сервер под тем же именем
+ может со временем смениться.
 """
 import base64
 import json
@@ -80,8 +81,7 @@ HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подпи
 MAX_PER_COUNTRY = 10    # не больше стольких серверов на одну страну
 
 REPORT_BONUS_MS = 150    # больше REALITY_BONUS_MS — подтверждённый человеком сервер важнее
-REPORT_PENALTY_MS = 150  # столько же вычитаем из бонуса при недавнем "-"
-REPORT_TTL_HOURS = 48    # сколько часов отзыв считается актуальным
+REPORT_TTL_HOURS = 48    # сколько часов подтверждение считается актуальным
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
@@ -96,33 +96,17 @@ def load_reports():
         return {}
 
 
-def report_status(display_name, reports, now):
-    """Возвращает 'ok', 'fail' или None по последнему актуальному отзыву
-    для этого имени сервера (сравниваем last_ok и last_fail, берём свежее)."""
+def is_confirmed(display_name, reports, now):
+    """True, если для этого имени сервера есть подтверждение "работает"
+    не старше REPORT_TTL_HOURS часов."""
     entry = reports.get(display_name)
-    if not entry:
-        return None
-
-    def parse(ts):
-        if not ts:
-            return None
-        try:
-            return datetime.fromisoformat(ts)
-        except ValueError:
-            return None
-
-    last_ok = parse(entry.get("last_ok"))
-    last_fail = parse(entry.get("last_fail"))
-    ttl = timedelta(hours=REPORT_TTL_HOURS)
-
-    ok_fresh = last_ok is not None and (now - last_ok) <= ttl
-    fail_fresh = last_fail is not None and (now - last_fail) <= ttl
-
-    if ok_fresh and (not fail_fresh or last_ok >= last_fail):
-        return "ok"
-    if fail_fresh and (not ok_fresh or last_fail > last_ok):
-        return "fail"
-    return None
+    if not entry or not entry.get("last_ok"):
+        return False
+    try:
+        last_ok = datetime.fromisoformat(entry["last_ok"])
+    except ValueError:
+        return False
+    return (now - last_ok) <= timedelta(hours=REPORT_TTL_HOURS)
 
 
 def rename_uri(raw: str, display_name: str) -> str:
@@ -146,11 +130,8 @@ def make_sort_key(reports, now):
             bonus += CELLULAR_BONUS_MS
 
         display_name = c.get("display_name") or c.get("remark") or "VPN"
-        status = report_status(display_name, reports, now)
-        if status == "ok":
+        if is_confirmed(display_name, reports, now):
             bonus += REPORT_BONUS_MS
-        elif status == "fail":
-            bonus -= REPORT_PENALTY_MS
 
         return ping - bonus
     return sort_key
@@ -216,11 +197,8 @@ def main():
         if c.get("proto") == "hysteria2":
             display_name = f"{display_name} \u26a0\ufe0fWiFi"
 
-        status = report_status(original_name, reports, now)
-        if status == "ok":
+        if is_confirmed(original_name, reports, now):
             display_name = f"{display_name} \u2705"
-        elif status == "fail":
-            display_name = f"{display_name} \u26a0\ufe0f"
 
         final_lines.append(rename_uri(c["raw"], display_name))
 
@@ -238,15 +216,15 @@ def main():
     stable_transport_count = sum(
         1 for c in configs if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS
     )
-    reported_ok_count = sum(
+    confirmed_count = sum(
         1 for c in configs
-        if report_status(c.get("display_name") or c.get("remark") or "VPN", reports, now) == "ok"
+        if is_confirmed(c.get("display_name") or c.get("remark") or "VPN", reports, now)
     )
     countries_count = len({c.get("country_code", "??") for c in configs})
     print(f"В финальную подписку вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
           f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
           f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
-          f"подтверждено отзывами: {reported_ok_count}, "
+          f"подтверждено пользователями: {confirmed_count}, "
           f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
     print(f"Файл подписки: {OUT_SUB}")
 
