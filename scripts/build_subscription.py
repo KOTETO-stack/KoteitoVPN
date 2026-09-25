@@ -3,11 +3,11 @@
 """
 build_subscription.py
 Финальный шаг workflow №2:
- - сортирует по пингу с бонусом для Reality (устойчивее к DPI - при близком
-   пинге приоритет ему, а не просто "кто на 5мс быстрее")
- - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение ниже)
- - не даёт одной стране занять больше MAX_PER_COUNTRY мест (иначе близкие к
-   GitHub-раннеру страны, например Канада, вымывают все остальные)
+ - сортирует по пингу с бонусами для Reality и для "стабильных" транспортов
+   (XHTTP/gRPC/WS — по наблюдениям сообщества эти транспорты меньше похожи
+   на детектируемый VPN-туннель, см. пояснение ниже)
+ - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение)
+ - не даёт одной стране занять больше MAX_PER_COUNTRY мест
  - берёт не больше MAX_SERVERS
  - переименовывает remark в "Страна Город Флаг"
  - кодирует итоговый список в base64 (стандартный формат подписки для Karing/Hiddyfi/v2rayNG)
@@ -24,15 +24,19 @@ build_subscription.py
 Про лимит на страну:
  GitHub-раннеры физически ближе к Канаде/США, поэтому пинг оттуда почти
  всегда ниже - без лимита подписка на 80%+ состоит из одной-двух стран.
- country_code - надёжное поле от geo_flag.py (двухбуквенный ISO-код),
- используется как ключ лимита вместо строкового имени страны.
- Если суммарно уникальных стран меньше MAX_SERVERS / MAX_PER_COUNTRY, в
- подписку войдёт меньше MAX_SERVERS серверов - это ожидаемо: лучше меньше,
- но разных, чем ровно 200 за счёт добивания той же Канадой.
+
+Про бонус за транспорт:
+ Никакой конфиг не гарантированно проходит везде - это физическое
+ ограничение, а не пробел в скрипте (см. обсуждение в чате). Но по общим
+ наблюдениям сообщества (например, README проекта igareck/vpn-configs-for-russia)
+ транспорты XHTTP, gRPC и WS в среднем стабильнее "голого" TLS. Этот бонус
+ — небольшая (не решающая) добавка к сортировке, меньше бонуса Reality,
+ которая слегка приподнимает такие конфиги при равном пинге.
 """
 import base64
 import json
 import os
+import re
 import urllib.parse
 
 IN_FILE = os.path.join(os.path.dirname(__file__), "..", "masked_configs.json")
@@ -42,8 +46,12 @@ OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
 
 MAX_SERVERS = 200
 REALITY_BONUS_MS = 50
+TRANSPORT_BONUS_MS = 20  # для type=xhttp/grpc/ws — меньше REALITY_BONUS_MS, это вторичный фактор
+STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
 HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке
 MAX_PER_COUNTRY = 10    # не больше стольких серверов на одну страну
+
+TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
 
 def rename_uri(raw: str, display_name: str) -> str:
@@ -51,9 +59,17 @@ def rename_uri(raw: str, display_name: str) -> str:
     return f"{base}#{urllib.parse.quote(display_name)}"
 
 
+def extract_transport(raw: str) -> str:
+    """Достаёт значение параметра type= из самой ссылки, без парсинга всей URI."""
+    m = TYPE_RE.search(raw)
+    return m.group(1).lower() if m else ""
+
+
 def sort_key(c):
     ping = c.get("ping_ms", 9999)
     bonus = REALITY_BONUS_MS if c.get("security_tag") == "reality" else 0
+    if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS:
+        bonus += TRANSPORT_BONUS_MS
     return ping - bonus
 
 
@@ -121,10 +137,14 @@ def main():
 
     reality_count = sum(1 for c in configs if c.get("security_tag") == "reality")
     hy2_count = sum(1 for c in configs if c.get("proto") == "hysteria2")
+    stable_transport_count = sum(
+        1 for c in configs if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS
+    )
     countries_count = len({c.get("country_code", "??") for c in configs})
     print(f"В финальную подписку вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
-          f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, стран: {countries_count} "
-          f"(лимит {MAX_PER_COUNTRY} на страну).")
+          f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
+          f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
+          f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
     print(f"Файл подписки: {OUT_SUB}")
 
 
