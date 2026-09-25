@@ -9,11 +9,13 @@ build_subscription.py
  - даёт дополнительный бонус всем TCP-based протоколам (vless/trojan) —
    на сотовых сетях РФ операторы чаще и сильнее душат/дросселируют UDP/QUIC
    (на чём построен Hysteria2), чем TCP:443+TLS (см. пояснение ниже)
+ - учитывает ручные отзывы "+/-" от небольшой доверенной группы людей,
+   собранные collect_reports.py из Telegram (см. пояснение ниже)
  - резервирует минимум HY2_MIN_SERVERS мест для Hysteria2 (см. пояснение)
  - не даёт одной стране занять больше MAX_PER_COUNTRY мест
  - берёт не больше MAX_SERVERS
  - переименовывает remark в "Страна Город Флаг" (Hysteria2 дополнительно
-   помечается "⚠️WiFi", т.к. на сотовой сети менее надёжен)
+   помечается "⚠️WiFi", подтверждённые отзывом серверы — "✅" или "⚠️")
  - кодирует итоговый список в base64 (стандартный формат подписки для Karing/Hiddyfi/v2rayNG)
  - пишет output/subscription.txt (то, на что будет указывать финальная ссылка подписки)
  - также пишет output/subscription_readable.txt (для проверки человеком, без base64)
@@ -42,19 +44,31 @@ build_subscription.py
  Hysteria2 работает через UDP/QUIC, и на сотовых сетях РФ это чаще всего
  душится сильнее, чем TCP:443+TLS. Бонус не убирает Hysteria2 из подписки
  (резерв HY2_MIN_SERVERS сохранён без изменений) — он просто поднимает
- vless/trojan выше при прочих равных, чтобы верхние позиции списка были
- надёжнее именно на мобильном интернете.
+ vless/trojan выше при прочих равных.
+
+Про отзывы пользователей (REPORT_BONUS_MS / REPORT_PENALTY_MS):
+ igareck/vpn-configs-for-russia тестирует серверы с сервера внутри России —
+ у нас такого сервера нет, GitHub Actions runner физически сидит за
+ пределами РФ и не видит блокировки РКН так, как их видит реальный
+ пользователь. Поэтому вместо автотеста "изнутри" используется отзыв
+ небольшой доверенной группы людей (см. collect_reports.py): кто-то реально
+ открыл сервер на своём телефоне/WiFi в России и сообщил боту "+"/"-".
+ Отзыв учитывается только REPORT_TTL_HOURS часов — дальше считается
+ устаревшим, потому что публичный сервер под тем же именем может со
+ временем смениться.
 """
 import base64
 import json
 import os
 import re
 import urllib.parse
+from datetime import datetime, timedelta, timezone
 
 IN_FILE = os.path.join(os.path.dirname(__file__), "..", "masked_configs.json")
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 OUT_SUB = os.path.join(OUT_DIR, "subscription.txt")
 OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
+REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 
 MAX_SERVERS = 200
 REALITY_BONUS_MS = 50
@@ -62,11 +76,53 @@ TRANSPORT_BONUS_MS = 20  # для type=xhttp/grpc/ws — меньше REALITY_BO
 CELLULAR_BONUS_MS = 80   # бонус TCP-based протоколам (vless/trojan) — устойчивее на сотовой,
                           # т.к. UDP/QUIC (Hysteria2) чаще душится операторами РФ на мобильной сети
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке — не уменьшено, протокол
-                          # остаётся полностью представлен (для WiFi/домашних сетей)
+HY2_MIN_SERVERS = 30    # минимум мест для Hysteria2 в подписке — не уменьшено
 MAX_PER_COUNTRY = 10    # не больше стольких серверов на одну страну
 
+REPORT_BONUS_MS = 150    # больше REALITY_BONUS_MS — подтверждённый человеком сервер важнее
+REPORT_PENALTY_MS = 150  # столько же вычитаем из бонуса при недавнем "-"
+REPORT_TTL_HOURS = 48    # сколько часов отзыв считается актуальным
+
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
+
+
+def load_reports():
+    if not os.path.exists(REPORTS_FILE):
+        return {}
+    try:
+        with open(REPORTS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def report_status(display_name, reports, now):
+    """Возвращает 'ok', 'fail' или None по последнему актуальному отзыву
+    для этого имени сервера (сравниваем last_ok и last_fail, берём свежее)."""
+    entry = reports.get(display_name)
+    if not entry:
+        return None
+
+    def parse(ts):
+        if not ts:
+            return None
+        try:
+            return datetime.fromisoformat(ts)
+        except ValueError:
+            return None
+
+    last_ok = parse(entry.get("last_ok"))
+    last_fail = parse(entry.get("last_fail"))
+    ttl = timedelta(hours=REPORT_TTL_HOURS)
+
+    ok_fresh = last_ok is not None and (now - last_ok) <= ttl
+    fail_fresh = last_fail is not None and (now - last_fail) <= ttl
+
+    if ok_fresh and (not fail_fresh or last_ok >= last_fail):
+        return "ok"
+    if fail_fresh and (not ok_fresh or last_fail > last_ok):
+        return "fail"
+    return None
 
 
 def rename_uri(raw: str, display_name: str) -> str:
@@ -80,17 +136,27 @@ def extract_transport(raw: str) -> str:
     return m.group(1).lower() if m else ""
 
 
-def sort_key(c):
-    ping = c.get("ping_ms", 9999)
-    bonus = REALITY_BONUS_MS if c.get("security_tag") == "reality" else 0
-    if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS:
-        bonus += TRANSPORT_BONUS_MS
-    if c.get("proto") != "hysteria2":
-        bonus += CELLULAR_BONUS_MS
-    return ping - bonus
+def make_sort_key(reports, now):
+    def sort_key(c):
+        ping = c.get("ping_ms", 9999)
+        bonus = REALITY_BONUS_MS if c.get("security_tag") == "reality" else 0
+        if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS:
+            bonus += TRANSPORT_BONUS_MS
+        if c.get("proto") != "hysteria2":
+            bonus += CELLULAR_BONUS_MS
+
+        display_name = c.get("display_name") or c.get("remark") or "VPN"
+        status = report_status(display_name, reports, now)
+        if status == "ok":
+            bonus += REPORT_BONUS_MS
+        elif status == "fail":
+            bonus -= REPORT_PENALTY_MS
+
+        return ping - bonus
+    return sort_key
 
 
-def select_with_quota(configs):
+def select_with_quota(configs, sort_key):
     """Топ MAX_SERVERS по sort_key, с резервом мест под Hysteria2 и лимитом
     MAX_PER_COUNTRY серверов на одну страну (country_code)."""
     configs = sorted(configs, key=sort_key)
@@ -136,13 +202,26 @@ def main():
     with open(IN_FILE, "r", encoding="utf-8") as f:
         configs = json.load(f)
 
-    configs = select_with_quota(configs)
+    reports = load_reports()
+    now = datetime.now(timezone.utc)
+    sort_key = make_sort_key(reports, now)
+
+    configs = select_with_quota(configs, sort_key)
 
     final_lines = []
     for c in configs:
         display_name = c.get("display_name") or c.get("remark") or "VPN"
+        original_name = display_name
+
         if c.get("proto") == "hysteria2":
-            display_name = f"{display_name} ⚠️WiFi"
+            display_name = f"{display_name} \u26a0\ufe0fWiFi"
+
+        status = report_status(original_name, reports, now)
+        if status == "ok":
+            display_name = f"{display_name} \u2705"
+        elif status == "fail":
+            display_name = f"{display_name} \u26a0\ufe0f"
+
         final_lines.append(rename_uri(c["raw"], display_name))
 
     body = "\n".join(final_lines)
@@ -159,10 +238,15 @@ def main():
     stable_transport_count = sum(
         1 for c in configs if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS
     )
+    reported_ok_count = sum(
+        1 for c in configs
+        if report_status(c.get("display_name") or c.get("remark") or "VPN", reports, now) == "ok"
+    )
     countries_count = len({c.get("country_code", "??") for c in configs})
     print(f"В финальную подписку вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
           f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
           f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
+          f"подтверждено отзывами: {reported_ok_count}, "
           f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
     print(f"Файл подписки: {OUT_SUB}")
 
