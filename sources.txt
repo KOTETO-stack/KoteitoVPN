@@ -159,3 +159,12 @@ https://raw.githubusercontent.com/xiaoji235/airport-free/main/v2ray.txt
 https://raw.githubusercontent.com/yaney01/Yaney01/main/2
 https://raw.githubusercontent.com/Mosifree/-FREE2CONFIG/refs/heads/main/Reality
 https://raw.githubusercontent.com/10ium/V2Hub3/refs/heads/main/Split/Normal/reality
+https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vless.txt
+https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/trojan.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/vless.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/trojan.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/hysteria2.txt
+https://raw.githubusercontent.com/wiki/sanmaxdev/free-proxy-list/lists/vless.txt
+https://raw.githubusercontent.com/wiki/sanmaxdev/free-proxy-list/lists/trojan.txt
+https://raw.githubusercontent.com/wiki/sanmaxdev/free-proxy-list/lists/hy2.txt
+https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/v2ray-base64.txt
