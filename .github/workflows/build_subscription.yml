@@ -34,12 +34,16 @@ jobs:
           sudo install -m 755 /tmp/sb/sing-box /usr/local/bin/sing-box
           sing-box version
 
-      - name: Rebuild pipeline from raw_servers.txt and run geo/mask stage
+      # Раньше здесь заново запускались filter_clean.py / ping_test.py / dns_test.py —
+      # те же скрипты, что collect_and_test.yml уже прогнал ~20 минут назад.
+      # Это добавляло лишние 6-7 минут задержки перед публикацией, а публичные
+      # бесплатные серверы за эти минуты успевают умирать чаще, чем стоило бы —
+      # то есть повторный тест не повышал качество списка, а снижал его свежесть.
+      # raw_servers.txt уже содержит только серверы, прошедшие проверку в
+      # collect_and_test.yml — здесь его просто конвертируем и публикуем.
+      - name: Build subscription from raw_servers.txt
         run: |
           python scripts/raw_to_json.py
-          python scripts/filter_clean.py
-          python scripts/ping_test.py
-          python scripts/dns_test.py
           python scripts/geo_flag.py
           python scripts/xray_mask.py
           python scripts/build_subscription.py
