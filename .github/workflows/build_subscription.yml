@@ -34,11 +34,11 @@ jobs:
           sudo install -m 755 /tmp/sb/sing-box /usr/local/bin/sing-box
           sing-box version
 
-      # ВАЖНО: build_subscription.yml запускается на отдельной, чистой машине —
-      # промежуточные JSON-файлы, которые collect_and_test.yml создавал у себя
-      # (raw_configs.json, dns_checked_configs.json и т.д.), туда не попадают.
-      # Из репозитория сюда приходит только закоммиченный output/raw_servers.txt,
-      # поэтому весь путь от него до geo_flag.py нужно пересобрать здесь заново.
+      # build_subscription.yml запускается на отдельной, чистой машине —
+      # промежуточные JSON-файлы, которые collect_and_test.yml создавал у себя,
+      # туда не попадают. Из репозитория сюда приходит только закоммиченный
+      # output/raw_servers.txt, поэтому весь путь от него до geo_flag.py
+      # нужно пересобрать здесь заново.
       - name: Rebuild pipeline from raw_servers.txt and run geo/mask stage
         run: |
           python scripts/raw_to_json.py
@@ -55,7 +55,7 @@ jobs:
         run: |
           git config user.name "koteito-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add output/subscription.txt output/subscription_readable.txt output/ad_block_rules.txt docs/
+          git add output/subscription.txt output/subscription_readable.txt output/subscription_cellular.txt output/subscription_cellular_readable.txt output/ad_block_rules.txt docs/
           git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление subscription.txt"
           git fetch origin main
           git merge -X ours --no-edit origin/main
