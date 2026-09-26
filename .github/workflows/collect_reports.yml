@@ -24,6 +24,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           ALLOWED_REPORTER_IDS: ${{ secrets.ALLOWED_REPORTER_IDS }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python scripts/collect_reports.py
 
       - name: Commit updated report files
