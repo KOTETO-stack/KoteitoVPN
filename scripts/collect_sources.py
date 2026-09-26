@@ -5,6 +5,19 @@ collect_sources.py
 Скачивает конфиги (vless://, trojan://, hysteria2://, hy2://) из sources.txt.
 Каждая ссылка может быть либо обычным текстом, либо base64-строкой — обрабатываем оба варианта.
 Результат: raw_configs.json — список строк-конфигов (ещё не отфильтрованных).
+
+Про дедупликацию по host:port:
+ Раньше уникальность проверялась по всей строке целиком (set() по полному raw).
+ Проблема: разные публичные агрегаторы часто копируют друг у друга один и тот
+ же физический сервер, но с чуть другим форматом ссылки (другой порядок
+ параметров, другой remark, слегка другой UUID при перевыпуске ключа тем же
+ провайдером) — из-за этого один и тот же мёртвый сервер попадал в список
+ много раз под разными "уникальными" строками (отсюда повторяющиеся
+ "Канада Торонто", "-1", "-2" и т.д. — это не один сервер под разными
+ именами, а несколько источников, отдающих один и тот же кластер хостов).
+ Теперь уникальность проверяется по (host, port), извлечённым из самой
+ ссылки — при совпадении host:port оставляем только первый встреченный
+ вариант ссылки.
 """
 import base64
 import json
@@ -18,6 +31,7 @@ SOURCES_FILE = os.path.join(os.path.dirname(__file__), "..", "sources.txt")
 OUT_FILE = os.path.join(os.path.dirname(__file__), "..", "raw_configs.json")
 
 PROTO_RE = re.compile(r"(?:vless|trojan|hysteria2|hy2)://[^\s\"'<>]+", re.IGNORECASE)
+HOST_PORT_RE = re.compile(r"://[^@/]*@([^:/?#\s]+):(\d{1,5})", re.IGNORECASE)
 TIMEOUT = 12
 UA = "Mozilla/5.0 (KoteitoVPN-collector)"
 
@@ -48,6 +62,16 @@ def try_base64_decode(text):
             except Exception:
                 continue
     return None
+
+
+def host_port_key(raw):
+    """Извлекает (host, port) из ссылки для дедупликации. Если не удалось
+    распарсить — возвращает саму строку целиком, чтобы такая запись не
+    склеилась ни с чем по ошибке."""
+    m = HOST_PORT_RE.search(raw)
+    if m:
+        return (m.group(1).lower(), m.group(2))
+    return (raw,)
 
 
 def fetch_one(url):
@@ -86,8 +110,14 @@ def main():
         for result in ex.map(fetch_one, urls):
             all_configs.extend(result)
 
-    unique = sorted(set(all_configs))
-    print(f"Всего собрано: {len(all_configs)}, уникальных: {len(unique)}")
+    seen = {}
+    for raw in all_configs:
+        key = host_port_key(raw)
+        if key not in seen:
+            seen[key] = raw
+    unique = sorted(seen.values())
+
+    print(f"Всего собрано: {len(all_configs)}, уникальных по host:port: {len(unique)}")
 
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         json.dump(unique, f, ensure_ascii=False, indent=0)
