@@ -100,7 +100,7 @@ def main():
             entry["city_ru"] = (g.get("city") or "").strip()
             entry["flag"] = flag_emoji(cc)
             entry["country_code"] = cc
-            parts = [p for p in [entry["country_ru"], entry["city_ru"], entry["flag"]] if p]
+            parts = [p for p in [entry["flag"], entry["country_ru"], entry["city_ru"]] if p]
             entry["display_name"] = " ".join(parts)
             results.append(entry)
 
