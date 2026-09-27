@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-geo_flag.py
-Определяет страну/город сервера через ip-api.com (lang=ru). Флаг эмодзи строится
-математически из ISO alpha-2 кода. Исключает Украину. Fallback-провайдер: ipwho.is.
-Результат: geo_configs.json
-"""
 import ipaddress
 import json
 import os
