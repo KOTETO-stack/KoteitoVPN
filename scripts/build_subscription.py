@@ -90,15 +90,27 @@ def load_reports():
 
 def is_confirmed(display_name, reports, now):
     """True, если для этого имени сервера есть подтверждение "работает"
-    не старше REPORT_TTL_HOURS часов."""
+    не старше REPORT_TTL_HOURS часов, И это подтверждение не было позже
+    отменено сообщением "-Имя сервера" (сразу снимает статус, не дожидаясь
+    истечения REPORT_TTL_HOURS — на случай если сервер заблокировали раньше)."""
     entry = reports.get(display_name)
     if not entry or not entry.get("last_ok"):
         return False
     try:
         last_ok = datetime.fromisoformat(entry["last_ok"])
-    except ValueError:
+    except (ValueError, TypeError):
         return False
-    return (now - last_ok) <= timedelta(hours=REPORT_TTL_HOURS)
+    if (now - last_ok) > timedelta(hours=REPORT_TTL_HOURS):
+        return False
+    last_fail_raw = entry.get("last_fail")
+    if last_fail_raw:
+        try:
+            last_fail = datetime.fromisoformat(last_fail_raw)
+            if last_fail > last_ok:
+                return False
+        except (ValueError, TypeError):
+            pass
+    return True
 
 
 def rename_uri(raw: str, display_name: str) -> str:
