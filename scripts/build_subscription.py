@@ -1,53 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-build_subscription.py
-Финальный шаг workflow №2. Собирает ДВЕ подписки из одного набора конфигов:
-
- 1. output/subscription.txt — основная, все протоколы (vless/trojan/hysteria2)
- 2. output/subscription_cellular.txt — только TCP-протоколы (vless/trojan),
-    БЕЗ Hysteria2 — специально для сотовой сети (см. пояснение ниже)
-
-Обе подписки:
- - исключают серверы с country_code из EXCLUDED_COUNTRIES (по умолчанию
-   Россия — сервер внутри РФ не помогает обойти блокировки РКН)
- - сортируют по пингу с бонусами для Reality и "стабильных" транспортов
-   (XHTTP/gRPC/WS)
- - учитывают подтверждения "работает" от доверенной группы людей в Telegram
- - не резервируют фиксированное количество мест под какой-либо протокол
- - не дают одной стране занять больше MAX_PER_COUNTRY мест
- - берут не больше MAX_SERVERS
- - переименовывают remark в "Страна Город Флаг", подтверждённые серверы
-   дополнительно помечаются "✅"
- - кодируются в base64 (формат подписки Karing/Hiddyfi/v2rayNG)
-
-Про мобильную подписку (subscription_cellular.txt):
- Hysteria2 работает через UDP/QUIC — многие операторы РФ душат/дросселируют
- UDP на сотовой сети сильнее, чем TCP:443+TLS (на котором работают vless и
- trojan). Вместо того чтобы просто поднимать TCP-протоколы в сортировке
- (что уже делает CELLULAR_BONUS_MS для основной подписки), эта подписка
- полностью убирает Hysteria2, чтобы человек на сотовой сети не тратил время
- на серверы, которые для него в принципе менее надёжны по протоколу.
-
-Про исключение России:
- Цель подписки — обход блокировок Роскомнадзора внутри РФ. Сервер, который
- сам физически находится в России, не даёт этого сделать: трафик до него
- всё равно идёт через российскую сеть и попадает под те же DPI-блокировки.
-
-Про лимит на страну:
- GitHub-раннеры физически ближе к Канаде/США, поэтому пинг оттуда почти
- всегда ниже - без лимита подписка на 80%+ состоит из одной-двух стран.
-
-Про бонус за транспорт:
- По наблюдениям сообщества (README проекта igareck/vpn-configs-for-russia)
- транспорты XHTTP, gRPC и WS в среднем стабильнее "голого" TLS.
-
-Про подтверждения пользователей (REPORT_BONUS_MS):
- GitHub Actions runner физически сидит за пределами РФ и не видит блокировки
- РКН так, как их видит реальный пользователь. Вместо автотеста "изнутри"
- используется подтверждение доверенной группы людей (collect_reports.py).
- Подтверждение актуально REPORT_TTL_HOURS часов.
-"""
 import base64
 import json
 import os
@@ -65,15 +17,15 @@ REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 
 MAX_SERVERS = 200
 REALITY_BONUS_MS = 50
-TRANSPORT_BONUS_MS = 20  # для type=xhttp/grpc/ws — меньше REALITY_BONUS_MS, это вторичный фактор
-CELLULAR_BONUS_MS = 80   # бонус TCP-based протоколам (vless/trojan) — устойчивее на сотовой
+TRANSPORT_BONUS_MS = 20
+CELLULAR_BONUS_MS = 80
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-MAX_PER_COUNTRY = 10      # единственный фиксированный лимит — не больше стольких серверов на страну
-EXCLUDED_COUNTRIES = {"RU"}  # серверы внутри России не помогают обходить блокировки РКН
-CELLULAR_EXCLUDED_PROTOCOLS = {"hysteria2"}  # в мобильной подписке Hysteria2 не участвует вовсе
+MAX_PER_COUNTRY = 10
+EXCLUDED_COUNTRIES = {"RU"}
+CELLULAR_EXCLUDED_PROTOCOLS = {"hysteria2"}
 
-REPORT_BONUS_MS = 150    # больше REALITY_BONUS_MS — подтверждённый человеком сервер важнее
-REPORT_TTL_HOURS = 48    # сколько часов подтверждение считается актуальным
+REPORT_BONUS_MS = 150
+REPORT_TTL_HOURS = 48
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
@@ -89,10 +41,6 @@ def load_reports():
 
 
 def is_confirmed(display_name, reports, now):
-    """True, если для этого имени сервера есть подтверждение "работает"
-    не старше REPORT_TTL_HOURS часов, И это подтверждение не было позже
-    отменено сообщением "-Имя сервера" (сразу снимает статус, не дожидаясь
-    истечения REPORT_TTL_HOURS — на случай если сервер заблокировали раньше)."""
     entry = reports.get(display_name)
     if not entry or not entry.get("last_ok"):
         return False
@@ -119,7 +67,6 @@ def rename_uri(raw: str, display_name: str) -> str:
 
 
 def extract_transport(raw: str) -> str:
-    """Достаёт значение параметра type= из самой ссылки, без парсинга всей URI."""
     m = TYPE_RE.search(raw)
     return m.group(1).lower() if m else ""
 
@@ -142,9 +89,6 @@ def make_sort_key(reports, now):
 
 
 def select_with_quota(configs, sort_key, exclude_protocols=frozenset()):
-    """Топ MAX_SERVERS по sort_key, с единственным лимитом MAX_PER_COUNTRY
-    серверов на одну страну (country_code). Протоколы из exclude_protocols
-    не участвуют вовсе (используется для мобильной подписки)."""
     configs = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
     configs = [c for c in configs if c.get("proto") not in exclude_protocols]
     configs = sorted(configs, key=sort_key)
