@@ -203,9 +203,14 @@ def main():
             continue
 
         if text in known_names:
-            entry = reports.setdefault(text, {"ok_count": 0, "last_ok": None})
+            entry = reports.setdefault(text, {"ok_count": 0, "last_ok": None, "last_fail": None})
             entry["ok_count"] += 1
             entry["last_ok"] = now_iso
+            accepted_reports += 1
+        elif text.startswith("-") and text[1:].strip() in known_names:
+            server_name = text[1:].strip()
+            entry = reports.setdefault(server_name, {"ok_count": 0, "last_ok": None, "last_fail": None})
+            entry["last_fail"] = now_iso
             accepted_reports += 1
         else:
             answer = ask_groq(text, context)
