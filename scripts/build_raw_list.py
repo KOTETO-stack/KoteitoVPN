@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-build_raw_list.py
-Финальный шаг workflow №1: пишет output/raw_servers.txt.
-"""
 import json
 import os
 
