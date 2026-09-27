@@ -1,33 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-collect_reports.py
-Собирает подтверждения "работает" от доверенной группы людей через Telegram,
-И теперь также отвечает на произвольные вопросы про подписку через Groq AI.
-
-Как бот различает подтверждение и вопрос:
- - Если текст сообщения точно совпадает с именем одного из серверов, которые
-   сейчас реально есть в output/subscription_readable.txt — это подтверждение
-   "работает" (как раньше, без изменений).
- - Если текст не совпадает ни с одним именем сервера — это вопрос. Бот
-   собирает короткую статистику текущей подписки (сколько серверов, по
-   протоколам) и отправляет вопрос + эту статистику в Groq (chat completion,
-   OpenAI-совместимый API), а полученный ответ пересылает обратно в Telegram.
-
-Нужные секреты в GitHub Actions:
- - TELEGRAM_BOT_TOKEN     (уже есть)
- - ALLOWED_REPORTER_IDS   (уже есть)
- - GROQ_API_KEY           (новый — ключ от console.groq.com/keys)
-   ВАЖНО: если ключ Groq раньше был где-то показан открытым текстом (в чате,
-   в скриншоте) — он скомпрометирован. Прежде чем вставлять сюда, зайдите на
-   console.groq.com/keys и создайте НОВЫЙ ключ, старый удалите.
-
-Про Groq: используется эндпоинт /openai/v1/chat/completions (OpenAI-совместимый).
-GROQ_MODEL можно сменить ниже, если модель отключат/переименуют на стороне Groq.
-"""
 import json
 import os
-import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -65,8 +39,6 @@ def save_json(path, data):
 
 
 def load_known_server_names():
-    """Читает текущий output/subscription_readable.txt и достаёт из каждой
-    строки display_name (часть после последнего '#', URL-декодированная)."""
     names = set()
     if not os.path.exists(READABLE_FILE):
         return names
@@ -81,8 +53,6 @@ def load_known_server_names():
 
 
 def build_subscription_context():
-    """Короткая статистика текущей подписки для системного промпта Groq —
-    чтобы бот отвечал по факту, а не придумывал цифры."""
     if not os.path.exists(READABLE_FILE):
         return "Данных о текущей подписке пока нет."
     proto_counts = {}
