@@ -34,11 +34,6 @@ jobs:
           sudo install -m 755 /tmp/sb/sing-box /usr/local/bin/sing-box
           sing-box version
 
-      # build_subscription.yml запускается на отдельной, чистой машине —
-      # промежуточные JSON-файлы, которые collect_and_test.yml создавал у себя,
-      # туда не попадают. Из репозитория сюда приходит только закоммиченный
-      # output/raw_servers.txt, поэтому весь путь от него до geo_flag.py
-      # нужно пересобрать здесь заново.
       - name: Rebuild pipeline from raw_servers.txt and run geo/mask stage
         run: |
           python scripts/raw_to_json.py
