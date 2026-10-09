@@ -168,3 +168,13 @@ https://raw.githubusercontent.com/wiki/sanmaxdev/free-proxy-list/lists/vless.txt
 https://raw.githubusercontent.com/wiki/sanmaxdev/free-proxy-list/lists/trojan.txt
 https://raw.githubusercontent.com/wiki/sanmaxdev/free-proxy-list/lists/hy2.txt
 https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/v2ray-base64.txt
+https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/vless.txt
+https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/trojan.txt
+https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/hy.txt
+https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/vless.txt
+https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/trojan.txt
+https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/hysteria2.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/vless.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/trojan.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/hysteria2.txt
+https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/refs/heads/main/vless_configs.txt
