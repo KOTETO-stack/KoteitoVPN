@@ -1,8 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+collect_sources.py
+Скачивает конфиги (vless://, trojan://, hysteria2://, hy2://) из sources.txt.
+Каждая ссылка может быть либо обычным текстом, либо base64-строкой — обрабатываем оба варианта.
+Результат: raw_configs.json — список строк-конфигов (ещё не отфильтрованных).
+
+Про дедупликацию по host:port:
+ Уникальность проверяется по (host, port), извлечённым из самой ссылки, а не
+ по строке целиком — так разные источники, отдающие один и тот же физический
+ сервер под чуть разным форматом ссылки, не дают "ложных" дублей в списке.
+
+Про MAX_PER_SOURCE и MAX_TOTAL_CANDIDATES:
+ Некоторые источники (например, списки с десятками тысяч строк) могут одним
+ списком "забить" весь объём, так что ping_test.py/dns_test.py не успевают
+ проверить всё за отведённое время workflow, и запуск отменяется по таймауту.
+ Чтобы ни один источник не монополизировал пул, сверх MAX_PER_SOURCE конфигов
+ из одного источника берётся случайная выборка этого размера (а не все) —
+ источник остаётся в деле, просто не перекрывает всех остальных. Сверху же
+ стоит общий предохранитель MAX_TOTAL_CANDIDATES: если после дедупликации
+ кандидатов всё равно больше этого числа, берётся случайная выборка из них.
+ Оба ограничения — защита по объёму, а не попытка угадать "какие конфиги
+ лучше"; реальная проверка качества (жив ли сервер) происходит дальше, в
+ ping_test.py/dns_test.py.
+"""
 import base64
 import json
 import os
+import random
 import re
 import sys
 import concurrent.futures as cf
@@ -15,6 +40,9 @@ PROTO_RE = re.compile(r"(?:vless|trojan|hysteria2|hy2)://[^\s\"'<>]+", re.IGNORE
 HOST_PORT_RE = re.compile(r"://[^@/]*@([^:/?#\s]+):(\d{1,5})", re.IGNORECASE)
 TIMEOUT = 12
 UA = "Mozilla/5.0 (KoteitoVPN-collector)"
+
+MAX_PER_SOURCE = 1500
+MAX_TOTAL_CANDIDATES = 12000
 
 
 def load_sources():
@@ -29,6 +57,7 @@ def load_sources():
 
 
 def try_base64_decode(text):
+    """Если содержимое — это одна base64-строка (частый формат подписок), декодируем."""
     stripped = text.strip().replace("\n", "").replace("\r", "")
     if len(stripped) < 20:
         return None
@@ -45,6 +74,9 @@ def try_base64_decode(text):
 
 
 def host_port_key(raw):
+    """Извлекает (host, port) из ссылки для дедупликации. Если не удалось
+    распарсить — возвращает саму строку целиком, чтобы такая запись не
+    склеилась ни с чем по ошибке."""
     m = HOST_PORT_RE.search(raw)
     if m:
         return (m.group(1).lower(), m.group(2))
@@ -75,7 +107,12 @@ def fetch_one(url):
             if dec:
                 configs += PROTO_RE.findall(dec)
 
-    print(f"[ok]   {url} -> {len(configs)} configs")
+    total_found = len(configs)
+    if total_found > MAX_PER_SOURCE:
+        configs = random.sample(configs, MAX_PER_SOURCE)
+        print(f"[ok]   {url} -> {total_found} configs (взято случайных {MAX_PER_SOURCE})")
+    else:
+        print(f"[ok]   {url} -> {total_found} configs")
     return configs
 
 
@@ -92,9 +129,15 @@ def main():
         key = host_port_key(raw)
         if key not in seen:
             seen[key] = raw
-    unique = sorted(seen.values())
+    unique = list(seen.values())
 
     print(f"Всего собрано: {len(all_configs)}, уникальных по host:port: {len(unique)}")
+
+    if len(unique) > MAX_TOTAL_CANDIDATES:
+        unique = random.sample(unique, MAX_TOTAL_CANDIDATES)
+        print(f"Превышен общий предохранитель — взята случайная выборка {MAX_TOTAL_CANDIDATES} из {len(seen)}")
+
+    unique = sorted(unique)
 
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         json.dump(unique, f, ensure_ascii=False, indent=0)
