@@ -41,8 +41,8 @@ HOST_PORT_RE = re.compile(r"://[^@/]*@([^:/?#\s]+):(\d{1,5})", re.IGNORECASE)
 TIMEOUT = 12
 UA = "Mozilla/5.0 (KoteitoVPN-collector)"
 
-MAX_PER_SOURCE = 1500
-MAX_TOTAL_CANDIDATES = 12000
+MAX_PER_SOURCE = 3000
+MAX_TOTAL_CANDIDATES = 25000
 
 
 def load_sources():
