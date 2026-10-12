@@ -192,6 +192,36 @@ def select_with_quota(configs, sort_key, exclude_protocols=frozenset()):
     return selected
 
 
+def round_up_to_ten(selected, configs, sort_key, exclude_protocols=frozenset()):
+    """Дополняет список до ближайшего круглого десятка сверху (101 -> 110,
+    68 -> 70), а не отбрасывает лишнее. Добавочные места берутся из общего
+    пула лучших по sort_key кандидатов, которые не попали в основной отбор
+    (чаще всего — из-за уже исчерпанного MAX_PER_COUNTRY для их страны).
+    Только для этой "добивки" лимит на страну не применяется — основной
+    отбор (select_with_quota) он не трогает."""
+    target = -(-len(selected) // 10) * 10  # округление вверх до десятка
+    if target == len(selected) or target == 0:
+        return selected
+
+    pool = [
+        c for c in configs
+        if c.get("country_code", "??") not in EXCLUDED_COUNTRIES
+        and c.get("proto") not in exclude_protocols
+    ]
+    pool = sorted(pool, key=sort_key)
+
+    selected_ids = {id(c) for c in selected}
+    result = list(selected)
+    for c in pool:
+        if len(result) >= target:
+            break
+        if id(c) in selected_ids:
+            continue
+        result.append(c)
+        selected_ids.add(id(c))
+    return result
+
+
 def render_subscription(configs, reports, now, out_sub, out_readable, label):
     final_lines = []
     for c in configs:
@@ -239,10 +269,14 @@ def main():
     now = datetime.now(timezone.utc)
     sort_key = make_sort_key(reports, now)
 
-    main_selected = select_with_quota(configs, sort_key)
+    main_base = select_with_quota(configs, sort_key)
+    main_selected = round_up_to_ten(main_base, configs, sort_key)
     render_subscription(main_selected, reports, now, OUT_SUB, OUT_READABLE, "основная")
 
-    cellular_selected = select_with_quota(configs, sort_key, exclude_protocols=CELLULAR_EXCLUDED_PROTOCOLS)
+    cellular_base = select_with_quota(configs, sort_key, exclude_protocols=CELLULAR_EXCLUDED_PROTOCOLS)
+    cellular_selected = round_up_to_ten(
+        cellular_base, configs, sort_key, exclude_protocols=CELLULAR_EXCLUDED_PROTOCOLS
+    )
     render_subscription(cellular_selected, reports, now, OUT_SUB_CELLULAR, OUT_READABLE_CELLULAR, "мобильная")
 
 
