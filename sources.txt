@@ -223,3 +223,9 @@ https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/main/V2Ray-Conf
 https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/main/V2Ray-Config-By-EbraSha.txt
 https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/main/trojan_configs.txt
 https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/main/all_extracted_configs.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/heavy/configs.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/heavy/configs_base64.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/light/configs.txt
+https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/light/configs_base64.txt
+https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge.txt
+https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/everything.txt
