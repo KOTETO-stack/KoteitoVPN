@@ -1,43 +1,12 @@
 # Источники VPN-конфигов (Trojan / VLESS / Hysteria2)
 # Правила:
-#  - только "чистый интернет" (raw-файлы на GitHub/jsdelivr), НЕ скрейпинг Telegram-каналов
+#  - только "чистый интернет" (raw-файлы на GitHub), НЕ скрейпинг Telegram-каналов
 #  - одна ссылка = одна строка
 #  - скрипт scripts/collect_sources.py переживёт мёртвую ссылку (просто пропустит её и залогирует)
 #  - список нужно периодически пополнять руками — публичные агрегаторы регулярно закрываются/переезжают
 #
 # Формат: обычные raw-текстовые списки (plain или base64) с строками vless://, trojan://, hysteria2://, hy2://
 
-https://cdn.jsdelivr.net/gh/0xRadikal/Free-v2ray-Configs@main/all/configs_base64.txt
-https://cdn.jsdelivr.net/gh/0xRadikal/Free-v2ray-Configs@main/fast/configs_base64.txt
-https://cdn.jsdelivr.net/gh/0xRadikal/Free-v2ray-Configs@main/secure/configs_base64.txt
-https://cdn.jsdelivr.net/gh/0xRadikal/Free-v2ray-Configs@main/top100.txt
-https://cdn.jsdelivr.net/gh/0xRadikal/Free-v2ray-Configs@main/verified/configs_base64.txt
-https://cdn.jsdelivr.net/gh/10ium/ScrapeAndCategorize@refs/heads/main/output_configs/Trojan.txt
-https://cdn.jsdelivr.net/gh/10ium/ScrapeAndCategorize@refs/heads/main/output_configs/Vless.txt
-https://cdn.jsdelivr.net/gh/4n0nymou3/multi-proxy-config-fetcher@refs/heads/main/configs/proxy_configs.txt
-https://cdn.jsdelivr.net/gh/ALIILAPRO/v2rayNG-Config@main/server.txt
-https://cdn.jsdelivr.net/gh/Barabama/FreeNodes@main/nodes/yudou66.txt
-https://cdn.jsdelivr.net/gh/Epodonios/v2ray-configs@main/All_Configs_Sub.txt
-https://cdn.jsdelivr.net/gh/Epodonios/v2ray-configs@main/Splitted-By-Protocol/trojan.txt
-https://cdn.jsdelivr.net/gh/Epodonios/v2ray-configs@main/Splitted-By-Protocol/vless.txt
-https://cdn.jsdelivr.net/gh/Pawdroid/Free-servers@main/sub
-https://cdn.jsdelivr.net/gh/Rayan-Config/C-Sub@main/configs/proxy.txt
-https://cdn.jsdelivr.net/gh/Ruk1ng001/freeSub@main/v2ray
-https://cdn.jsdelivr.net/gh/ermaozi/get_subscribe@main/subscribe/v2ray.txt
-https://cdn.jsdelivr.net/gh/firefoxmmx2/v2rayshare_subcription@main/subscription/vray_sub.txt
-https://cdn.jsdelivr.net/gh/freefq/free@master/v2
-https://cdn.jsdelivr.net/gh/mahdibland/V2RayAggregator@master/sub/sub_merge_base64.txt
-https://cdn.jsdelivr.net/gh/nyeinkokoaung404/V2ray-Configs@main/Sub1.txt
-https://cdn.jsdelivr.net/gh/nyeinkokoaung404/V2ray-Configs@main/Sub2.txt
-https://cdn.jsdelivr.net/gh/nyeinkokoaung404/V2ray-Configs@main/configs/proxy_configs.txt
-https://cdn.jsdelivr.net/gh/nyeinkokoaung404/V2ray-Configs@main/configs/proxy_configs_tested.txt
-https://cdn.jsdelivr.net/gh/peasoft/NoMoreWalls@master/list.txt
-https://cdn.jsdelivr.net/gh/ripaojiedian/freenode@main/sub
-https://cdn.jsdelivr.net/gh/roosterkid/openproxylist@main/V2RAY_RAW.txt
-https://cdn.jsdelivr.net/gh/ts-sf/fly@main/v2
-https://cdn.jsdelivr.net/gh/w1770946466/Auto_proxy@main/Long_term_subscription1
-https://cdn.jsdelivr.net/gh/w1770946466/Auto_proxy@main/Long_term_subscription2
-https://cdn.jsdelivr.net/gh/xiaoji235/airport-free@main/v2ray.txt
 https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/all/configs_base64.txt
 https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/fast/configs_base64.txt
 https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/secure/configs_base64.txt
@@ -56,23 +25,18 @@ https://raw.githubusercontent.com/Rayan-Config/C-Sub/main/configs/proxy.txt
 https://raw.githubusercontent.com/Ruk1ng001/freeSub/main/v2ray
 https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt
 https://raw.githubusercontent.com/firefoxmmx2/v2rayshare_subcription/main/subscription/vray_sub.txt
-https://raw.githubusercontent.com/freefq/free/master/v2
 https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge_base64.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/Sub1.txt
-https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/Sub2.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/configs/proxy_configs.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/configs/proxy_configs_tested.txt
 https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.txt
 https://raw.githubusercontent.com/ripaojiedian/freenode/main/sub
 https://raw.githubusercontent.com/roosterkid/openproxylist/main/V2RAY_RAW.txt
-https://raw.githubusercontent.com/ts-sf/fly/main/v2
 https://raw.githubusercontent.com/w1770946466/Auto_proxy/main/Long_term_subscription1
 https://raw.githubusercontent.com/w1770946466/Auto_proxy/main/Long_term_subscription2
 https://raw.githubusercontent.com/xiaoji235/airport-free/main/v2ray.txt
 https://raw.githubusercontent.com/Mosifree/-FREE2CONFIG/refs/heads/main/Reality
 https://raw.githubusercontent.com/10ium/V2Hub3/refs/heads/main/Split/Normal/reality
-https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vless.txt
-https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/trojan.txt
 https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/vless.txt
 https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/trojan.txt
 https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/hysteria2.txt
@@ -81,7 +45,6 @@ https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/refs/heads/main
 # gfpcom/free-proxy-list — обновляется ежечасно
 https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/vless.txt
 https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/trojan.txt
-https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/hy.txt
 
 https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/all_sub.txt
 https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/super-sub.txt
