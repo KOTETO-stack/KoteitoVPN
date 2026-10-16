@@ -2,51 +2,22 @@
 # -*- coding: utf-8 -*-
 """
 build_subscription.py
-Финальный шаг workflow №2. Собирает ДВЕ подписки из одного набора конфигов:
+Финальный шаг workflow. Собирает ДВЕ подписки из одного пула конфигов:
 
- 1. output/subscription.txt — основная, все протоколы (vless/trojan/hysteria2)
- 2. output/subscription_cellular.txt — только TCP-протоколы (vless/trojan),
-    БЕЗ Hysteria2 — специально для сотовой сети (см. пояснение ниже)
+ 1. output/subscription.txt — основная. Лучшие серверы по sort_key.
+ 2. output/subscription_cellular.txt — вторая. Те же правила отбора, но
+    только серверы, которых НЕТ в основной подписке.
 
 Обе подписки:
- - исключают серверы с country_code из EXCLUDED_COUNTRIES (по умолчанию
-   Россия — сервер внутри РФ не помогает обойти блокировки РКН)
- - сортируют по пингу с бонусами для Reality и "стабильных" транспортов
-   (XHTTP/gRPC/WS)
- - учитывают подтверждения "работает" от доверенной группы людей в Telegram
- - не резервируют фиксированное количество мест под какой-либо протокол
+ - исключают серверы с country_code из EXCLUDED_COUNTRIES (Россия)
+ - сортируют по пингу с бонусами для Reality, стабильных транспортов
+   (XHTTP/gRPC/WS), TCP-протоколов и подтверждённых пользователями серверов
+ - учитывают давление блокировок по данным OONI (если файл есть)
  - не дают одной стране занять больше MAX_PER_COUNTRY мест
  - берут не больше MAX_SERVERS
- - переименовывают remark в "Страна Город Флаг", подтверждённые серверы
-   дополнительно помечаются "✅"
+ - округляют количество до ближайшего десятка сверху
+ - переименовывают remark в "Страна Город Флаг", подтверждённые помечаются "✅"
  - кодируются в base64 (формат подписки Karing/Hiddyfi/v2rayNG)
-
-Про мобильную подписку (subscription_cellular.txt):
- Hysteria2 работает через UDP/QUIC — многие операторы РФ душат/дросселируют
- UDP на сотовой сети сильнее, чем TCP:443+TLS (на котором работают vless и
- trojan). Вместо того чтобы просто поднимать TCP-протоколы в сортировке
- (что уже делает CELLULAR_BONUS_MS для основной подписки), эта подписка
- полностью убирает Hysteria2, чтобы человек на сотовой сети не тратил время
- на серверы, которые для него в принципе менее надёжны по протоколу.
-
-Про исключение России:
- Цель подписки — обход блокировок Роскомнадзора внутри РФ. Сервер, который
- сам физически находится в России, не даёт этого сделать: трафик до него
- всё равно идёт через российскую сеть и попадает под те же DPI-блокировки.
-
-Про лимит на страну:
- GitHub-раннеры физически ближе к Канаде/США, поэтому пинг оттуда почти
- всегда ниже - без лимита подписка на 80%+ состоит из одной-двух стран.
-
-Про бонус за транспорт:
- По наблюдениям сообщества (README проекта igareck/vpn-configs-for-russia)
- транспорты XHTTP, gRPC и WS в среднем стабильнее "голого" TLS.
-
-Про подтверждения пользователей (REPORT_BONUS_MS):
- GitHub Actions runner физически сидит за пределами РФ и не видит блокировки
- РКН так, как их видит реальный пользователь. Вместо автотеста "изнутри"
- используется подтверждение доверенной группы людей (collect_reports.py).
- Подтверждение актуально REPORT_TTL_HOURS часов.
 """
 import base64
 import json
@@ -64,20 +35,19 @@ OUT_READABLE_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular_readable.tx
 REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 OONI_INDEX_FILE = os.path.join(OUT_DIR, "ooni_censorship_index.json")
 
-OONI_PRESSURE_THRESHOLD = 50   # % — выше этого порога считаем давление блокировок "высоким"
-OONI_HIGH_PRESSURE_MULTIPLIER = 1.5  # во столько раз усиливаем бонус TCP/Reality при высоком давлении
+OONI_PRESSURE_THRESHOLD = 50          # % — выше этого порога давление считается высоким
+OONI_HIGH_PRESSURE_MULTIPLIER = 1.5   # во столько раз усиливаем бонусы при высоком давлении
 
 MAX_SERVERS = 200
 REALITY_BONUS_MS = 50
-TRANSPORT_BONUS_MS = 20  # для type=xhttp/grpc/ws — меньше REALITY_BONUS_MS, это вторичный фактор
-CELLULAR_BONUS_MS = 80   # бонус TCP-based протоколам (vless/trojan) — устойчивее на сотовой
+TRANSPORT_BONUS_MS = 20               # для type=xhttp/grpc/ws
+CELLULAR_BONUS_MS = 80                # бонус TCP-протоколам (vless/trojan)
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-MAX_PER_COUNTRY = 20      # единственный фиксированный лимит — не больше стольких серверов на страну
-EXCLUDED_COUNTRIES = {"RU"}  # серверы внутри России не помогают обходить блокировки РКН
-CELLULAR_EXCLUDED_PROTOCOLS = {"hysteria2"}  # в мобильной подписке Hysteria2 не участвует вовсе
+MAX_PER_COUNTRY = 20
+EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России не помогают обходить блокировки РКН
 
-REPORT_BONUS_MS = 150    # больше REALITY_BONUS_MS — подтверждённый человеком сервер важнее
-REPORT_TTL_HOURS = 48    # сколько часов подтверждение считается актуальным
+REPORT_BONUS_MS = 150                 # подтверждённый человеком сервер важнее
+REPORT_TTL_HOURS = 48                 # сколько часов подтверждение актуально
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
@@ -93,10 +63,8 @@ def load_reports():
 
 
 def is_confirmed(display_name, reports, now):
-    """True, если для этого имени сервера есть подтверждение "работает"
-    не старше REPORT_TTL_HOURS часов, И это подтверждение не было позже
-    отменено сообщением "-Имя сервера" (сразу снимает статус, не дожидаясь
-    истечения REPORT_TTL_HOURS — на случай если сервер заблокировали раньше)."""
+    """True, если есть подтверждение "работает" не старше REPORT_TTL_HOURS
+    и оно не было позже отменено сообщением "-Имя сервера"."""
     entry = reports.get(display_name)
     if not entry or not entry.get("last_ok"):
         return False
@@ -118,11 +86,8 @@ def is_confirmed(display_name, reports, now):
 
 
 def load_ooni_pressure():
-    """Читает output/ooni_censorship_index.json (пишется ooni_censorship_index.py).
-    Возвращает процент давления блокировок (0-100) или None, если файла нет
-    или данных по нему не было. Это ОБЩИЙ индикатор по стране, не привязанный
-    к конкретному серверу — OONI не тестирует произвольные IP из публичных
-    VPN-агрегаторов."""
+    """Читает output/ooni_censorship_index.json. Возвращает процент давления
+    блокировок (0-100) или None, если данных нет."""
     if not os.path.exists(OONI_INDEX_FILE):
         return None
     try:
@@ -139,7 +104,6 @@ def rename_uri(raw: str, display_name: str) -> str:
 
 
 def extract_transport(raw: str) -> str:
-    """Достаёт значение параметра type= из самой ссылки, без парсинга всей URI."""
     m = TYPE_RE.search(raw)
     return m.group(1).lower() if m else ""
 
@@ -147,8 +111,9 @@ def extract_transport(raw: str) -> str:
 def make_sort_key(reports, now):
     pressure = load_ooni_pressure()
     high_pressure = pressure is not None and pressure >= OONI_PRESSURE_THRESHOLD
-    reality_bonus = REALITY_BONUS_MS * (OONI_HIGH_PRESSURE_MULTIPLIER if high_pressure else 1)
-    cellular_bonus = CELLULAR_BONUS_MS * (OONI_HIGH_PRESSURE_MULTIPLIER if high_pressure else 1)
+    multiplier = OONI_HIGH_PRESSURE_MULTIPLIER if high_pressure else 1
+    reality_bonus = REALITY_BONUS_MS * multiplier
+    cellular_bonus = CELLULAR_BONUS_MS * multiplier
     if pressure is not None:
         print(f"Индикатор давления блокировок OONI (РФ): {pressure}% "
               f"({'высокое, бонусы усилены' if high_pressure else 'в норме'})")
@@ -169,17 +134,13 @@ def make_sort_key(reports, now):
     return sort_key
 
 
-def select_with_quota(configs, sort_key, exclude_protocols=frozenset()):
-    """Топ MAX_SERVERS по sort_key, с единственным лимитом MAX_PER_COUNTRY
-    серверов на одну страну (country_code). Протоколы из exclude_protocols
-    не участвуют вовсе (используется для мобильной подписки)."""
+def select_with_quota(configs, sort_key):
+    """Топ MAX_SERVERS по sort_key с лимитом MAX_PER_COUNTRY на страну."""
     configs = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
-    configs = [c for c in configs if c.get("proto") not in exclude_protocols]
     configs = sorted(configs, key=sort_key)
 
     country_count = {}
     selected = []
-
     for c in configs:
         if len(selected) >= MAX_SERVERS:
             break
@@ -188,37 +149,28 @@ def select_with_quota(configs, sort_key, exclude_protocols=frozenset()):
             continue
         selected.append(c)
         country_count[cc] = country_count.get(cc, 0) + 1
-
     return selected
 
 
-def round_up_to_ten(selected, configs, sort_key, exclude_protocols=frozenset()):
-    """Дополняет список до ближайшего круглого десятка сверху (101 -> 110,
-    68 -> 70), а не отбрасывает лишнее. Добавочные места берутся из общего
-    пула лучших по sort_key кандидатов, которые не попали в основной отбор
-    (чаще всего — из-за уже исчерпанного MAX_PER_COUNTRY для их страны).
-    Только для этой "добивки" лимит на страну не применяется — основной
-    отбор (select_with_quota) он не трогает."""
-    target = -(-len(selected) // 10) * 10  # округление вверх до десятка
+def round_up_to_ten(selected, configs, sort_key):
+    """Дополняет список до ближайшего круглого десятка сверху. Добивка берётся
+    из лучших кандидатов, которые не вошли в основной отбор, без лимита на страну."""
+    target = -(-len(selected) // 10) * 10
     if target == len(selected) or target == 0:
         return selected
 
-    pool = [
-        c for c in configs
-        if c.get("country_code", "??") not in EXCLUDED_COUNTRIES
-        and c.get("proto") not in exclude_protocols
-    ]
+    pool = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
     pool = sorted(pool, key=sort_key)
 
-    selected_ids = {id(c) for c in selected}
+    selected_raws = {c["raw"] for c in selected}
     result = list(selected)
     for c in pool:
         if len(result) >= target:
             break
-        if id(c) in selected_ids:
+        if c["raw"] in selected_raws:
             continue
         result.append(c)
-        selected_ids.add(id(c))
+        selected_raws.add(c["raw"])
     return result
 
 
@@ -226,11 +178,8 @@ def render_subscription(configs, reports, now, out_sub, out_readable, label):
     final_lines = []
     for c in configs:
         display_name = c.get("display_name") or c.get("remark") or "VPN"
-        original_name = display_name
-
-        if is_confirmed(original_name, reports, now):
+        if is_confirmed(display_name, reports, now):
             display_name = f"{display_name} \u2705"
-
         final_lines.append(rename_uri(c["raw"], display_name))
 
     body = "\n".join(final_lines)
@@ -269,15 +218,18 @@ def main():
     now = datetime.now(timezone.utc)
     sort_key = make_sort_key(reports, now)
 
+    # 1. Основная подписка
     main_base = select_with_quota(configs, sort_key)
     main_selected = round_up_to_ten(main_base, configs, sort_key)
     render_subscription(main_selected, reports, now, OUT_SUB, OUT_READABLE, "основная")
 
-    cellular_base = select_with_quota(configs, sort_key, exclude_protocols=CELLULAR_EXCLUDED_PROTOCOLS)
-    cellular_selected = round_up_to_ten(
-        cellular_base, configs, sort_key, exclude_protocols=CELLULAR_EXCLUDED_PROTOCOLS
-    )
-    render_subscription(cellular_selected, reports, now, OUT_SUB_CELLULAR, OUT_READABLE_CELLULAR, "мобильная")
+    # 2. Вторая подписка: те же правила, но только серверы, которых нет в основной
+    used_raw = {c["raw"] for c in main_selected}
+    remainder = [c for c in configs if c["raw"] not in used_raw]
+
+    alt_base = select_with_quota(remainder, sort_key)
+    alt_selected = round_up_to_ten(alt_base, remainder, sort_key)
+    render_subscription(alt_selected, reports, now, OUT_SUB_CELLULAR, OUT_READABLE_CELLULAR, "вторая")
 
 
 if __name__ == "__main__":
