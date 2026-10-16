@@ -8,10 +8,3 @@ https://raw.githubusercontent.com/coldwater-10/V2ray-Configs/main/Sub7.txt
 https://raw.githubusercontent.com/coldwater-10/V2ray-Configs/main/Sub8.txt
 https://raw.githubusercontent.com/coldwater-10/V2ray-Configs/main/Sub9.txt
 https://raw.githubusercontent.com/coldwater-10/V2ray-Configs/main/Sub10.txt
-https://raw.githubusercontent.com/barry-far/V2ray-config/main/Sub4.txt
-https://raw.githubusercontent.com/barry-far/V2ray-config/main/Sub5.txt
-https://raw.githubusercontent.com/barry-far/V2ray-config/main/Sub6.txt
-https://raw.githubusercontent.com/barry-far/V2ray-config/main/Sub7.txt
-https://raw.githubusercontent.com/barry-far/V2ray-config/main/Sub8.txt
-https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/hysteria2.txt
-https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/v2ray-base64.txt
