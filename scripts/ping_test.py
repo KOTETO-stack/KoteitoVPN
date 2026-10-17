@@ -3,20 +3,32 @@
 """
 ping_test.py
 
-Версия 5 — добавлена РЕАЛЬНАЯ проверка: трафик реально пропускается через сервер.
+Версия 5.1 — реальная проверка: трафик реально пропускается через сервер.
+Отличие от 5.0: шире и разнообразнее выборка для этапа 2 (см. main()).
 
-Этап 1 (как в v4, быстрый отсев):
+Этап 1 (быстрый отсев):
  - vless/trojan: TCP-connect + TLS-хендшейк на SNI из конфига;
  - hysteria2: UDP-проб порта.
  Всё, что дороже MAX_PING_MS, отбрасывается.
 
-Этап 2 (новый, главный):
+Этап 2 (главный):
  - каждый оставшийся конфиг превращается в outbound для sing-box (то же ядро,
    что у Karing/Hiddify), sing-box запускается пачками по BATCH_SIZE штук;
  - через локальный SOCKS-порт каждого конфига делается настоящий HTTPS-запрос
    (generate_204) — если ответ пришёл, сервер реально проксирует трафик;
  - затем небольшая загрузка (SPEED_BYTES), очень медленные серверы отбрасываются;
  - в результат добавляются поля real_ms и speed_kbps.
+
+Какие конфиги идут на этап 2 (раньше брались только самые низкие по пингу,
+а с GitHub-раннера самый низкий пинг у IP Cloudflare/CDN, которые проходят
+TLS с любым SNI, но реальный прокси не дают; Reality-серверы стоят на обычных
+VPS, имеют больший пинг и в выборку почти не попадали):
+ - Hysteria2: до HY2_CAP штук;
+ - Reality: случайная выборка до REALITY_CAP;
+ - остальные vless/trojan: FAST_CAP с самым низким пингом + RANDOM_CAP случайных
+   из остальных.
+Порядок запуска: сначала Hysteria2, потом Reality, потом остальные. Если
+бюджет времени кончится, не проверенным останется хвост.
 
 Страховки:
  - нет бинарника sing-box или переменная окружения REAL_TEST=0 -> работает как v4;
@@ -29,6 +41,7 @@ ping_test.py
 import concurrent.futures as cf
 import json
 import os
+import random
 import re
 import shutil
 import socket
@@ -52,7 +65,10 @@ WORKERS = 40
 # ---------- этап 2: реальный тест через sing-box ----------
 REAL_TEST_ENABLED = os.environ.get("REAL_TEST", "1") != "0"
 SINGBOX_BIN = os.environ.get("SINGBOX_BIN") or shutil.which("sing-box") or "/usr/local/bin/sing-box"
-MAX_REAL_TEST = 1500        # сколько лучших по этапу 1 конфигов проверяем реально
+HY2_CAP = 800               # максимум Hysteria2 на реальный тест
+REALITY_CAP = 1500          # максимум Reality (случайная выборка)
+FAST_CAP = 1000             # остальные vless/trojan: столько с самым низким пингом
+RANDOM_CAP = 700            # и столько случайных из остальных
 BATCH_SIZE = 120            # конфигов в одном запуске sing-box
 BATCH_WORKERS = 60          # параллельных проверок внутри пачки
 BASE_PORT = 21000           # локальные SOCKS-порты: BASE_PORT + номер
@@ -61,7 +77,7 @@ SPEED_TIMEOUT = 8.0
 MAX_REAL_MS = 4000          # запрос через прокси дольше — сервер считается плохим
 SPEED_BYTES = 300000
 MIN_SPEED_KBPS = 80         # КБ/с; ниже — отбрасываем (только если скорость реально измерена)
-TIME_BUDGET_SEC = 1200      # общий бюджет времени на этап 2
+TIME_BUDGET_SEC = 1500      # общий бюджет времени на этап 2 (workflow: timeout 45 мин)
 STARTUP_WAIT = 10.0         # сколько ждём старта sing-box
 
 LATENCY_TARGETS = [
@@ -528,6 +544,28 @@ def real_test(candidates):
     return passed, stats
 
 
+def pick_candidates(quick):
+    """Выбирает конфиги для реального теста (см. описание в начале файла).
+    quick уже отсортирован по ping_ms."""
+    rng = random.Random()
+    hy2 = [e for e in quick if e.get("proto") == "hysteria2"]
+    other = [e for e in quick if e.get("proto") != "hysteria2"]
+    reality = [e for e in other if e.get("security_tag") == "reality"]
+    plain = [e for e in other if e.get("security_tag") != "reality"]
+
+    hy2_pick = hy2[:HY2_CAP]
+    reality_pick = rng.sample(reality, min(len(reality), REALITY_CAP))
+    fast_pick = plain[:FAST_CAP]
+    rest = plain[FAST_CAP:]
+    random_pick = rng.sample(rest, min(len(rest), RANDOM_CAP))
+
+    print("Выборка для этапа 2: Hysteria2 %d (из %d), Reality %d (из %d), "
+          "vless/trojan по пингу %d + случайных %d (из %d)"
+          % (len(hy2_pick), len(hy2), len(reality_pick), len(reality),
+             len(fast_pick), len(random_pick), len(plain)))
+    return hy2_pick + reality_pick + fast_pick + random_pick
+
+
 # =====================================================================
 def main():
     with open(IN_FILE, "r", encoding="utf-8") as f:
@@ -548,9 +586,7 @@ def main():
     elif not os.path.exists(SINGBOX_BIN):
         print("⚠️ sing-box не найден (%s) — используем результат этапа 1." % SINGBOX_BIN)
     else:
-        hy2 = [e for e in quick if e.get("proto") == "hysteria2"]
-        other = [e for e in quick if e.get("proto") != "hysteria2"]
-        candidates = other[:MAX_REAL_TEST - 400] + hy2[:400]
+        candidates = pick_candidates(quick)
         print("Этап 2: реальный тест через sing-box для %d серверов..." % len(candidates))
         passed, stats = real_test(candidates)
         print("Этап 2: проверено %(tested)d, прошли %(passed)d, не поддерживается %(unsupported)d, "
