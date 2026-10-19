@@ -1,0 +1,19 @@
+name: Run All (collect -> build)
+
+# Один запуск вручную: сначала сбор и проверка серверов, потом сборка подписок.
+# Второй шаг стартует только если первый завершился успешно.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    uses: ./.github/workflows/collect_and_test.yml
+    secrets: inherit
+
+  build:
+    needs: collect
+    uses: ./.github/workflows/build_subscription.yml
+    secrets: inherit
