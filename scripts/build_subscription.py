@@ -2,22 +2,28 @@
 # -*- coding: utf-8 -*-
 """
 build_subscription.py
-Финальный шаг workflow. Собирает ДВЕ подписки из одного пула конфигов:
+Финальный шаг workflow. Делит ОДИН пул конфигов на SUBSCRIPTION_COUNT подписок
+(2 и больше). Серверы в подписках не повторяются, качество у всех одинаковое.
 
- 1. output/subscription.txt — основная. Лучшие серверы по sort_key.
- 2. output/subscription_cellular.txt — вторая. Те же правила отбора, но
-    только серверы, которых НЕТ в основной подписке.
+ Подписка 1 -> output/subscription.txt
+ Подписка 2 -> output/subscription_cellular.txt (старое имя файла сохранено)
+ Подписка 3 -> output/subscription_3.txt, подписка 4 -> subscription_4.txt и т.д.
 
-Обе подписки:
- - исключают серверы с country_code из EXCLUDED_COUNTRIES (Россия)
- - сортируют по пингу с бонусами для Reality, стабильных транспортов
-   (XHTTP/gRPC/WS), TCP-протоколов и подтверждённых пользователями серверов
- - учитывают давление блокировок по данным OONI (если файл есть)
- - не дают одной стране занять больше MAX_PER_COUNTRY мест
- - берут не больше MAX_SERVERS
- - округляют количество до ближайшего десятка сверху
- - переименовывают remark в "Страна Город Флаг", подтверждённые помечаются "✅"
- - кодируются в base64 (формат подписки Karing/Hiddyfi/v2rayNG)
+Как делится пул:
+ - все конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных
+   транспортов, TCP-протоколов, подтверждений пользователей и давления блокировок);
+ - лучшие раздаются по кругу: 1-й в подписку 1, 2-й в подписку 2, и так далее;
+ - в каждой подписке не больше MAX_SERVERS серверов и не больше MAX_PER_COUNTRY
+   серверов одной страны; конфиг, который не влез по этим лимитам, идёт в
+   запасные;
+ - серверы с country_code из EXCLUDED_COUNTRIES (Россия) не берутся вообще;
+ - каждая подписка добивается запасными до круглого десятка (101 -> 110), но
+   каждый запасной сервер используется только один раз.
+
+Если для подписки серверов нет, её файл не перезаписывается (остаётся прошлая версия).
+
+Остальное как раньше: remark -> "Страна Город Флаг", подтверждённые серверы
+помечаются "✅", результат кодируется в base64 (формат Karing/Hiddyfi/v2rayNG).
 """
 import base64
 import json
@@ -35,15 +41,17 @@ OUT_READABLE_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular_readable.tx
 REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 OONI_INDEX_FILE = os.path.join(OUT_DIR, "ooni_censorship_index.json")
 
+SUBSCRIPTION_COUNT = 2                # на сколько подписок делить пул (2 и больше)
+
 OONI_PRESSURE_THRESHOLD = 50          # % — выше этого порога давление считается высоким
 OONI_HIGH_PRESSURE_MULTIPLIER = 1.5   # во столько раз усиливаем бонусы при высоком давлении
 
-MAX_SERVERS = 200
+MAX_SERVERS = 200                     # максимум серверов в ОДНОЙ подписке
 REALITY_BONUS_MS = 50
 TRANSPORT_BONUS_MS = 20               # для type=xhttp/grpc/ws
 CELLULAR_BONUS_MS = 80                # бонус TCP-протоколам (vless/trojan)
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-MAX_PER_COUNTRY = 20
+MAX_PER_COUNTRY = 20                  # максимум серверов одной страны в ОДНОЙ подписке
 EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России не помогают обходить блокировки РКН
 
 REPORT_BONUS_MS = 150                 # подтверждённый человеком сервер важнее
@@ -134,47 +142,73 @@ def make_sort_key(reports, now):
     return sort_key
 
 
-def select_with_quota(configs, sort_key):
-    """Топ MAX_SERVERS по sort_key с лимитом MAX_PER_COUNTRY на страну."""
-    configs = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
-    configs = sorted(configs, key=sort_key)
+def output_paths(index):
+    """0 -> subscription.txt, 1 -> subscription_cellular.txt (старое имя),
+    2 и дальше -> subscription_3.txt, subscription_4.txt, ..."""
+    if index == 0:
+        return OUT_SUB, OUT_READABLE
+    if index == 1:
+        return OUT_SUB_CELLULAR, OUT_READABLE_CELLULAR
+    n = index + 1
+    return (os.path.join(OUT_DIR, "subscription_%d.txt" % n),
+            os.path.join(OUT_DIR, "subscription_%d_readable.txt" % n))
 
-    country_count = {}
-    selected = []
-    for c in configs:
-        if len(selected) >= MAX_SERVERS:
-            break
-        cc = c.get("country_code", "??")
-        if country_count.get(cc, 0) >= MAX_PER_COUNTRY:
+
+def label_for(index):
+    if index == 0:
+        return "основная"
+    if index == 1:
+        return "вторая"
+    return "подписка %d" % (index + 1)
+
+
+def split_pool(configs, sort_key, n):
+    """Делит пул на n подписок: лучшие серверы раздаются по кругу.
+    Возвращает (список групп, список запасных серверов в порядке качества)."""
+    seen = set()
+    pool = []
+    candidates = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
+    for c in sorted(candidates, key=sort_key):
+        if c["raw"] in seen:
             continue
-        selected.append(c)
-        country_count[cc] = country_count.get(cc, 0) + 1
-    return selected
+        seen.add(c["raw"])
+        pool.append(c)
 
-
-def round_up_to_ten(selected, configs, sort_key):
-    """Дополняет список до ближайшего круглого десятка сверху. Добивка берётся
-    из лучших кандидатов, которые не вошли в основной отбор, без лимита на страну."""
-    target = -(-len(selected) // 10) * 10
-    if target == len(selected) or target == 0:
-        return selected
-
-    pool = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
-    pool = sorted(pool, key=sort_key)
-
-    selected_raws = {c["raw"] for c in selected}
-    result = list(selected)
+    groups = [[] for _ in range(n)]
+    counts = [dict() for _ in range(n)]
+    leftovers = []
+    turn = 0
     for c in pool:
-        if len(result) >= target:
+        cc = c.get("country_code", "??")
+        placed = False
+        for step in range(n):
+            g = (turn + step) % n
+            if len(groups[g]) >= MAX_SERVERS or counts[g].get(cc, 0) >= MAX_PER_COUNTRY:
+                continue
+            groups[g].append(c)
+            counts[g][cc] = counts[g].get(cc, 0) + 1
+            turn = (g + 1) % n
+            placed = True
             break
-        if c["raw"] in selected_raws:
-            continue
-        result.append(c)
-        selected_raws.add(c["raw"])
-    return result
+        if not placed:
+            leftovers.append(c)
+    return groups, leftovers
+
+
+def pad_to_ten(group, leftovers):
+    """Добивает подписку запасными до круглого десятка сверху. Каждый запасной
+    используется только в одной подписке."""
+    target = -(-len(group) // 10) * 10
+    while len(group) < target and leftovers:
+        group.append(leftovers.pop(0))
+    return group
 
 
 def render_subscription(configs, reports, now, out_sub, out_readable, label):
+    if not configs:
+        print(f"[{label}] серверов нет, файл не перезаписан, остаётся прошлая версия")
+        return
+
     final_lines = []
     for c in configs:
         display_name = c.get("display_name") or c.get("remark") or "VPN"
@@ -218,18 +252,15 @@ def main():
     now = datetime.now(timezone.utc)
     sort_key = make_sort_key(reports, now)
 
-    # 1. Основная подписка
-    main_base = select_with_quota(configs, sort_key)
-    main_selected = round_up_to_ten(main_base, configs, sort_key)
-    render_subscription(main_selected, reports, now, OUT_SUB, OUT_READABLE, "основная")
+    count = max(1, SUBSCRIPTION_COUNT)
+    groups, leftovers = split_pool(configs, sort_key, count)
+    print(f"Пул после фильтров: {sum(len(g) for g in groups) + len(leftovers)} серверов, "
+          f"делим на {count} подписок.")
 
-    # 2. Вторая подписка: те же правила, но только серверы, которых нет в основной
-    used_raw = {c["raw"] for c in main_selected}
-    remainder = [c for c in configs if c["raw"] not in used_raw]
-
-    alt_base = select_with_quota(remainder, sort_key)
-    alt_selected = round_up_to_ten(alt_base, remainder, sort_key)
-    render_subscription(alt_selected, reports, now, OUT_SUB_CELLULAR, OUT_READABLE_CELLULAR, "вторая")
+    for i, group in enumerate(groups):
+        group = pad_to_ten(group, leftovers)
+        out_sub, out_readable = output_paths(i)
+        render_subscription(group, reports, now, out_sub, out_readable, label_for(i))
 
 
 if __name__ == "__main__":
