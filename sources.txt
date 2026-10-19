@@ -15,6 +15,7 @@
 # Оставлены для вашего решения — обсуждали это отдельно.
 
 
+
 https://github.com/Argh94/Proxy-List/raw/refs/heads/main/All_Config.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_001.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_002.txt
@@ -147,6 +148,7 @@ https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/Confi
 https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/Config_no_cf.txt
 https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/conf-week.txt
 https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/regions/conf-DE.txt
+https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/regions/conf-FI.txt
 https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/regions/conf-FR.txt
 https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/regions/conf-NL.txt
 https://raw.githubusercontent.com/r3zarahimi/tg-v2ray-configs-every2h/main/regions/conf-UK.txt
