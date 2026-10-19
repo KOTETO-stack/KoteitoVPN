@@ -3,8 +3,10 @@
 """
 ping_test.py
 
-Версия 5.1 — реальная проверка: трафик реально пропускается через сервер.
-Отличие от 5.0: шире и разнообразнее выборка для этапа 2 (см. main()).
+Версия 5.2 — реальная проверка: трафик реально пропускается через сервер.
+5.1: шире и разнообразнее выборка для этапа 2 (см. main()).
+5.2: type=raw (новое имя tcp в Xray) теперь тестируется; в лог выводится разбивка
+     причин, по которым конфиг «не поддерживается».
 
 Этап 1 (быстрый отсев):
  - vless/trojan: TCP-connect + TLS-хендшейк на SNI из конфига;
@@ -39,6 +41,7 @@ VPS, имеют больший пинг и в выборку почти не п�
 осталось (это пинг этапа 1), сортировка теперь по real_ms.
 """
 import concurrent.futures as cf
+from collections import Counter
 import json
 import os
 import random
@@ -87,6 +90,14 @@ LATENCY_TARGETS = [
 SPEED_TARGET = ("speed.cloudflare.com", "/__down?bytes=%d" % SPEED_BYTES)
 
 VALID_FP = {"chrome", "firefox", "edge", "safari", "360", "qq", "ios", "android", "random", "randomized"}
+
+# причины, по которым конфиг нельзя протестировать через sing-box (для лога)
+UNSUPPORTED = Counter()
+
+
+def skip(reason):
+    UNSUPPORTED[reason] += 1
+    return None
 
 
 # =====================================================================
@@ -215,12 +226,15 @@ def make_tls(params, host):
 
 def make_transport(params):
     """(ok, transport). ok=False — транспорт sing-box не поддерживает (xhttp, kcp и т.п.)."""
-    t = params.get("type", "tcp") or "tcp"
+    t = (params.get("type", "tcp") or "tcp").lower()
+    if t == "raw":  # новое имя tcp в Xray
+        t = "tcp"
     host = params.get("host", "")
     path = params.get("path", "") or "/"
     if t == "tcp":
-        if params.get("headertype", "none") not in ("", "none"):
-            return False, None
+        ht = params.get("headertype", "none")
+        if ht not in ("", "none"):
+            return False, "tcp headerType=" + ht
         return True, None
     if t == "ws":
         tr = {"type": "ws", "path": path}
@@ -239,7 +253,7 @@ def make_transport(params):
         if host:
             tr["host"] = [h for h in host.split(",") if h]
         return True, tr
-    return False, None
+    return False, "транспорт " + t
 
 
 def build_outbound(entry):
@@ -251,21 +265,21 @@ def build_outbound(entry):
 
         if scheme == "vless":
             if params.get("encryption", "none") not in ("", "none"):
-                return None
+                return skip("vless encryption не none")
             ob = {"type": "vless", "server": host, "server_port": port, "uuid": userinfo}
             sec = params.get("security", "none")
             if sec in ("tls", "reality"):
                 tls = make_tls(params, host)
                 if tls is None:
-                    return None
+                    return skip("reality без public key (pbk)")
                 ob["tls"] = tls
                 if params.get("flow"):
                     ob["flow"] = params["flow"]
             elif sec not in ("none", ""):
-                return None
+                return skip("vless security=" + sec)
             ok, tr = make_transport(params)
             if not ok:
-                return None
+                return skip(tr)
             if tr:
                 ob["transport"] = tr
             return ob
@@ -279,13 +293,13 @@ def build_outbound(entry):
                     p["security"] = "tls"
                 tls = make_tls(p, host)
                 if tls is None:
-                    return None
+                    return skip("reality без public key (pbk)")
                 ob["tls"] = tls
             elif sec != "none":
-                return None
+                return skip("trojan security=" + sec)
             ok, tr = make_transport(params)
             if not ok:
-                return None
+                return skip(tr)
             if tr:
                 ob["transport"] = tr
             return ob
@@ -298,12 +312,12 @@ def build_outbound(entry):
             obfs = params.get("obfs", "")
             if obfs:
                 if obfs != "salamander":
-                    return None
+                    return skip("hysteria2 obfs=" + obfs)
                 ob["obfs"] = {"type": "salamander", "password": params.get("obfs-password", "")}
             return ob
     except Exception:
-        return None
-    return None
+        return skip("ошибка разбора ссылки")
+    return skip("неизвестная схема")
 
 
 # =====================================================================
@@ -591,6 +605,8 @@ def main():
         passed, stats = real_test(candidates)
         print("Этап 2: проверено %(tested)d, прошли %(passed)d, не поддерживается %(unsupported)d, "
               "битых конфигов %(invalid)d" % stats)
+        for reason, n in UNSUPPORTED.most_common():
+            print("  не поддерживается: %s — %d" % (reason, n))
         if not passed and len(candidates) >= 20:
             print("⚠️ Реальный тест не пропустил НИ ОДНОГО сервера — похоже, сломан сам тест. "
                   "Используем результат этапа 1, чтобы подписка не опустела.")
