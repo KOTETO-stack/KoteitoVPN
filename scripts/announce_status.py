@@ -3,15 +3,19 @@
 """
 announce_status.py
 
-Раз в час отправляет в Telegram сводку по подписке:
- - точное время сейчас и время СЛЕДУЮЩЕГО обновления подписки (берётся из cron-расписания
+Раз в час отправляет в Telegram объявление по ВСЕМ подпискам:
+ - точное время сейчас и время СЛЕДУЮЩЕГО обновления (берётся из cron-расписания
    workflow с именем UPDATE_WORKFLOW_NAME, время показывается в часовом поясе TZ_NAME);
- - точное число серверов в подписке;
- - протоколы: сколько всего и сколько серверов на каждом;
- - страны: сколько всего и сколько серверов в каждой (по флагу в названии сервера).
+ - для каждой подписки: ссылка, число серверов, протоколы и страны;
+ - общее число серверов во всех подписках.
+
+Подписки находятся сами: файлы output/subscription_readable.txt (подписка 1),
+output/subscription_cellular_readable.txt (подписка 2), output/subscription_3_readable.txt
+(подписка 3) и так далее. Добавили ещё одну подписку в build_subscription.py, и она
+появится в объявлении без правок этого файла.
 
 Если секреты TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID не заданы — тихо завершается без
-ошибки (текст сводки при этом всё равно печатается в лог).
+ошибки (текст объявления при этом всё равно печатается в лог).
 """
 import collections
 import datetime
@@ -22,17 +26,23 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
-SUB_READABLE = os.path.join(ROOT, "output", "subscription_readable.txt")
+OUTPUT_DIR = os.path.join(ROOT, "output")
 WORKFLOWS_DIR = os.path.join(ROOT, ".github", "workflows")
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+
+# Откуда брать ссылки на подписки. В GitHub Actions репозиторий подставляется сам.
+REPO = os.environ.get("GITHUB_REPOSITORY") or "KOTETO-stack/KoteitoVPN"
+BRANCH = "main"
 
 # Значение поля name: в yml того workflow, по расписанию которого обновляется подписка.
 UPDATE_WORKFLOW_NAME = "Collect and Test VPN Sources"
 # Часовой пояс для показа времени (МСК = UTC+3). Хочешь другой — поменяй две строки.
 TZ_OFFSET_HOURS = 3
 TZ_NAME = "МСК"
+
+MAX_COUNTRIES_SHOWN = 8   # сколько стран перечислять в строке подписки
 
 PROTO_NAMES = {
     "vless": "VLESS",
@@ -179,7 +189,7 @@ def send_telegram(text):
 
 
 # ---------------------------------------------------------------------
-#                             разбор подписки
+#                             разбор подписок
 # ---------------------------------------------------------------------
 def country_of(remark):
     """(флаг, код страны) из названия сервера, либо ('', '')."""
@@ -191,17 +201,38 @@ def country_of(remark):
     return flag, code
 
 
-def main():
-    tz = datetime.timezone(datetime.timedelta(hours=TZ_OFFSET_HOURS))
-    now_utc = datetime.datetime.now(datetime.timezone.utc)
-    now_local = now_utc.astimezone(tz)
+def subscription_number(filename):
+    """subscription_readable.txt -> 1, subscription_cellular_readable.txt -> 2,
+    subscription_3_readable.txt -> 3 и т.д. Для остальных имён None."""
+    if filename == "subscription_readable.txt":
+        return 1
+    if filename == "subscription_cellular_readable.txt":
+        return 2
+    m = re.match(r"subscription_(\d+)_readable\.txt$", filename)
+    if m:
+        return int(m.group(1))
+    return None
 
-    if not os.path.exists(SUB_READABLE):
-        send_telegram("⚠️ KoteitoVPN: output/subscription_readable.txt пока не существует — "
-                      "подписка ещё не собиралась.")
-        return
 
-    with open(SUB_READABLE, "r", encoding="utf-8") as f:
+def find_subscriptions():
+    """[(номер, путь к readable-файлу)] по возрастанию номера."""
+    found = []
+    for path in glob.glob(os.path.join(OUTPUT_DIR, "subscription*_readable.txt")):
+        n = subscription_number(os.path.basename(path))
+        if n is not None:
+            found.append((n, path))
+    return sorted(found)
+
+
+def subscription_url(readable_path):
+    """Ссылка на сам файл подписки (без суффикса _readable)."""
+    name = os.path.basename(readable_path).replace("_readable", "")
+    return "https://raw.githubusercontent.com/%s/%s/output/%s" % (REPO, BRANCH, name)
+
+
+def parse_subscription(path):
+    """(всего серверов, счётчик протоколов, счётчик стран, подписи стран)."""
+    with open(path, "r", encoding="utf-8") as f:
         lines = [l.strip() for l in f if l.strip()]
 
     proto_counts = collections.Counter()
@@ -227,23 +258,57 @@ def main():
             country_counts["??"] += 1
             country_labels["??"] = "🌐 Без флага"
 
+    return total, proto_counts, country_counts, country_labels
+
+
+def subscription_block(number, path):
+    total, proto_counts, country_counts, country_labels = parse_subscription(path)
+    lines = [
+        "▪️ Подписка %d" % number,
+        "🔗 %s" % subscription_url(path),
+        "🖥 Серверов: %d" % total,
+    ]
+    if proto_counts:
+        lines.append("🔌 " + " · ".join("%s %d" % (name, n) for name, n in proto_counts.most_common()))
+
+    real = [c for c in country_counts if c != "??"]
+    if real:
+        ranked = sorted(country_counts.items(), key=lambda kv: (-kv[1], country_labels[kv[0]]))
+        shown = ["%s %d" % (country_labels[code], n) for code, n in ranked[:MAX_COUNTRIES_SHOWN]]
+        rest = len(ranked) - len(shown)
+        tail = " и ещё %d" % rest if rest > 0 else ""
+        lines.append("🌍 Стран %d: %s%s" % (len(real), ", ".join(shown), tail))
+    return total, "\n".join(lines)
+
+
+def main():
+    tz = datetime.timezone(datetime.timedelta(hours=TZ_OFFSET_HOURS))
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_local = now_utc.astimezone(tz)
+
+    subs = find_subscriptions()
+    if not subs:
+        send_telegram("⚠️ KoteitoVPN: в output/ пока нет файлов подписок — "
+                      "подписка ещё не собиралась.")
+        return
+
+    blocks = []
+    grand_total = 0
+    for number, path in subs:
+        total, block = subscription_block(number, path)
+        grand_total += total
+        blocks.append(block)
+
     out = [
-        "📊 KoteitoVPN — статус подписки",
+        "📢 KoteitoVPN — подписки",
         "🕒 Сейчас: %s %s" % (now_local.strftime("%d.%m.%Y %H:%M"), TZ_NAME),
         next_update_line(now_utc, tz),
         "",
-        "🖥 Серверов в подписке: %d" % total,
+        "Добавьте в Karing или Hiddify любую подписку. Серверы в разных подписках не повторяются.",
         "",
-        "🔌 Протоколов: %d" % len(proto_counts),
     ]
-    for name, n in proto_counts.most_common():
-        out.append("  • %s: %d" % (name, n))
-
-    real_countries = [c for c in country_counts if c != "??"]
-    out.append("")
-    out.append("🌍 Стран: %d" % len(real_countries))
-    for code, n in sorted(country_counts.items(), key=lambda kv: (-kv[1], country_labels[kv[0]])):
-        out.append("  %s — %d" % (country_labels[code], n))
+    out.append("\n\n".join(blocks))
+    out += ["", "Всего серверов: %d" % grand_total]
 
     text = "\n".join(out)[:4000]
     print(text)
