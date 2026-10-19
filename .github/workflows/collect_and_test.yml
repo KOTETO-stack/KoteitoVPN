@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: "0 * * * *"
   workflow_dispatch: {}
+  workflow_call: {}
 
 permissions:
   contents: write
@@ -15,10 +16,12 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
