@@ -42,6 +42,7 @@ jobs:
           python scripts/dns_test.py
           python scripts/geo_flag.py
           python scripts/xray_mask.py
+          python scripts/ooni_censorship_index.py
           python scripts/build_subscription.py
           python scripts/build_ad_block_rules.py
           python scripts/build_status_page.py
@@ -51,6 +52,7 @@ jobs:
           git config user.name "koteito-bot"
           git config user.email "bot@users.noreply.github.com"
           git add output/subscription.txt output/subscription_readable.txt output/subscription_cellular.txt output/subscription_cellular_readable.txt output/ad_block_rules.txt docs/
+          git add output/ooni_censorship_index.json 2>/dev/null || true
           git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление subscription.txt"
           git fetch origin main
           git merge -X ours --no-edit origin/main
