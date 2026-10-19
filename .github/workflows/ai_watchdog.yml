@@ -1,0 +1,33 @@
+name: AI Watchdog
+
+on:
+  schedule:
+    - cron: "40 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  models: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run watchdog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ALWAYS_REPORT: ${{ github.event_name == 'workflow_dispatch' }}
+        run: python3 scripts/ai_watchdog.py
