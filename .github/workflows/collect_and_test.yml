@@ -37,6 +37,14 @@ jobs:
           sudo install -m 755 /tmp/sb/sing-box /usr/local/bin/sing-box
           sing-box version
 
+      - name: Restore server history
+        uses: actions/cache/restore@v4
+        with:
+          path: server_history.json
+          key: server-history-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            server-history-
+
       - name: Run collector -> filter -> ping -> dns
         run: |
           python scripts/collect_telegram.py
@@ -45,6 +53,13 @@ jobs:
           python scripts/ping_test.py
           python scripts/dns_test.py
           python scripts/build_raw_list.py
+
+      - name: Save server history
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: server_history.json
+          key: server-history-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Commit updated raw list
         run: |
