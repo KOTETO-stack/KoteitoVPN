@@ -1,0 +1,40 @@
+# Публичные Telegram-каналы с конфигами (по одному в строке).
+# Скрипт scripts/collect_telegram.py читает их через открытую страницу t.me/s/<канал>.
+# Формат: name, @name или https://t.me/name. Строки с # игнорируются.
+# Названия взяты из README открытых проектов-сборщиков; я их не проверял.
+# В логе collect_and_test видно по каждому каналу, сколько конфигов он дал:
+# каналы с "0 configs" или [skip] можно смело удалять отсюда.
+
+MsV2ray
+foxrayiran
+DailyV2RY
+yaney_01
+FreakConfig
+EliV2ray
+ServerNett
+proxystore11
+v2rayng_fa2
+v2rayng_org
+V2rayNGvpni
+custom_14
+v2rayNG_VPNN
+V2rayNG3
+v2ray_outlineir
+v2_vmess
+FreeVlessVpn
+vmess_vless_v2rayng
+PrivateVPNs
+Outline_Vpn
+napsternetv_config
+Easy_Free_VPN
+V2Ray_FreedomIran
+v2ray_for_free
+V2rayN_Free
+free4allVPN
+vpn_ocean
+configV2rayForFree
+FreeV2rays
+DigiV2ray
+v2rayNG_VPN
+v2rayn_server
+Raydikalx
