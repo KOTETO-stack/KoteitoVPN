@@ -69,9 +69,9 @@ WORKERS = 40
 REAL_TEST_ENABLED = os.environ.get("REAL_TEST", "1") != "0"
 SINGBOX_BIN = os.environ.get("SINGBOX_BIN") or shutil.which("sing-box") or "/usr/local/bin/sing-box"
 HY2_CAP = 800               # максимум Hysteria2 на реальный тест
-REALITY_CAP = 1500          # максимум Reality (случайная выборка)
+REALITY_CAP = 2500          # максимум Reality (случайная выборка)
 FAST_CAP = 1000             # остальные vless/trojan: столько с самым низким пингом
-RANDOM_CAP = 700            # и столько случайных из остальных
+RANDOM_CAP = 1200           # и столько случайных из остальных
 BATCH_SIZE = 120            # конфигов в одном запуске sing-box
 BATCH_WORKERS = 60          # параллельных проверок внутри пачки
 BASE_PORT = 21000           # локальные SOCKS-порты: BASE_PORT + номер
@@ -80,7 +80,7 @@ SPEED_TIMEOUT = 8.0
 MAX_REAL_MS = 4000          # запрос через прокси дольше — сервер считается плохим
 SPEED_BYTES = 300000
 MIN_SPEED_KBPS = 80         # КБ/с; ниже — отбрасываем (только если скорость реально измерена)
-TIME_BUDGET_SEC = 1500      # общий бюджет времени на этап 2 (workflow: timeout 45 мин)
+TIME_BUDGET_SEC = 1800      # общий бюджет времени на этап 2 (workflow: timeout 90 мин)
 STARTUP_WAIT = 10.0         # сколько ждём старта sing-box
 
 LATENCY_TARGETS = [
