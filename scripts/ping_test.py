@@ -3,7 +3,11 @@
 """
 ping_test.py
 
-Версия 5.2 — реальная проверка: трафик реально пропускается через сервер.
+Версия 5.3 — реальная проверка: трафик реально пропускается через сервер.
+5.3: накопительная история (файл server_history.json, в Actions хранится в кэше):
+     серверы, которые уже проходили тест, проверяются в первую очередь в каждом запуске,
+     остаются в пуле, пока не провалят HISTORY_MAX_FAILS проверок подряд, и им прощается
+     одиночный сбой. Пул растёт и стабилизируется, а не собирается с нуля каждый час.
 5.1: шире и разнообразнее выборка для этапа 2 (см. main()).
 5.2: type=raw (новое имя tcp в Xray) теперь тестируется; в лог выводится разбивка
      причин, по которым конфиг «не поддерживается».
@@ -83,6 +87,14 @@ MIN_SPEED_KBPS = 80         # КБ/с; ниже — отбрасываем (то
 TIME_BUDGET_SEC = 1800      # общий бюджет времени на этап 2 (workflow: timeout 90 мин)
 STARTUP_WAIT = 10.0         # сколько ждём старта sing-box
 
+# ---------- история проверенных серверов ----------
+HISTORY_FILE = os.environ.get("HISTORY_FILE") or os.path.join(BASE_DIR, "..", "server_history.json")
+HISTORY_INJECT = 800        # сколько серверов из истории проверять первыми в каждом запуске
+HISTORY_MAX_FAILS = 5       # столько провалов подряд, и сервер удаляется из истории
+HISTORY_MAX_AGE_DAYS = 7    # давно не проходившие сервера удаляются
+HISTORY_MAX_ENTRIES = 3000  # максимум записей в истории
+HISTORY_GRACE_MIN_OK = 3    # сколько проходов нужно, чтобы один сбой подряд простили
+
 LATENCY_TARGETS = [
     ("cp.cloudflare.com", "/generate_204"),
     ("www.gstatic.com", "/generate_204"),
@@ -93,6 +105,7 @@ VALID_FP = {"chrome", "firefox", "edge", "safari", "360", "qq", "ios", "android"
 
 # причины, по которым конфиг нельзя протестировать через sing-box (для лога)
 UNSUPPORTED = Counter()
+TESTED_KEYS = set()   # host:port конфигов, которые реально прошли через sing-box в этом запуске
 
 
 def skip(reason):
@@ -520,6 +533,8 @@ def process_items(items, base_port, stats):
 
     try:
         stats["tested"] += len(items)
+        for _e, _ob in items:
+            TESTED_KEYS.add(entry_key(_e))
         with cf.ThreadPoolExecutor(max_workers=BATCH_WORKERS) as ex:
             futs = {}
             for i, (entry, _ob) in enumerate(items):
@@ -558,12 +573,108 @@ def real_test(candidates):
     return passed, stats
 
 
-def pick_candidates(quick):
+# =====================================================================
+#                          ИСТОРИЯ ПРОВЕРЕННЫХ СЕРВЕРОВ
+# =====================================================================
+def entry_key(e):
+    return "%s:%s" % (str(e.get("host", "")).lower(), e.get("port"))
+
+
+def load_history():
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_history(history):
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, separators=(",", ":"))
+    except Exception as e:
+        print("История не сохранена: %s" % e)
+
+
+def inject_history(configs, history):
+    """Добавляет серверы из истории во вход этапа 1 (если их там ещё нет).
+    Возвращает (конфиги, ключи приоритетных серверов, сколько добавлено)."""
+    present = {entry_key(e) for e in configs}
+    items = sorted(history.items(),
+                   key=lambda kv: (kv[1].get("ok", 0), kv[1].get("last_ok", 0)), reverse=True)
+    injected, hist_keys = [], set()
+    for k, v in items:
+        if len(hist_keys) >= HISTORY_INJECT:
+            break
+        if "entry" not in v:
+            continue
+        hist_keys.add(k)
+        if k not in present:
+            injected.append(json.loads(json.dumps(v["entry"])))
+            present.add(k)
+    return configs + injected, hist_keys, len(injected)
+
+
+def note_stage1_failures(history, hist_keys, quick):
+    """Серверы из истории, не прошедшие быстрый отсев, считаются провалом."""
+    alive = {entry_key(e) for e in quick}
+    for k in hist_keys:
+        if k not in alive and k in history:
+            history[k]["fail"] = history[k].get("fail", 0) + 1
+            history[k]["ok"] = 0
+
+
+def update_history(history, tested_keys, passed, now):
+    pass_map = {entry_key(e): e for e in passed}
+    for k in tested_keys:
+        if k in pass_map:
+            v = history.get(k) or {"ok": 0, "fail": 0, "total_ok": 0}
+            v["ok"] = v.get("ok", 0) + 1
+            v["fail"] = 0
+            v["total_ok"] = v.get("total_ok", 0) + 1
+            v["last_ok"] = now
+            v["entry"] = dict(pass_map[k])
+            history[k] = v
+        elif k in history:
+            history[k]["fail"] = history[k].get("fail", 0) + 1
+            history[k]["ok"] = 0
+
+
+def carried_over(history, passed):
+    """Серверы, которые часто проходили и лишь один раз подряд сбойнули: оставляем в пуле."""
+    have = {entry_key(e) for e in passed}
+    out = []
+    for k, v in history.items():
+        if k in have or "entry" not in v:
+            continue
+        if v.get("fail", 0) == 1 and v.get("total_ok", 0) >= HISTORY_GRACE_MIN_OK:
+            out.append(json.loads(json.dumps(v["entry"])))
+    return out
+
+
+def prune_history(history, now):
+    cutoff = now - HISTORY_MAX_AGE_DAYS * 86400
+    for k in list(history):
+        v = history[k]
+        if "entry" not in v or v.get("fail", 0) >= HISTORY_MAX_FAILS or v.get("last_ok", 0) < cutoff:
+            del history[k]
+    if len(history) > HISTORY_MAX_ENTRIES:
+        keep = sorted(history, key=lambda k: (history[k].get("ok", 0), history[k].get("last_ok", 0)),
+                      reverse=True)[:HISTORY_MAX_ENTRIES]
+        history = {k: history[k] for k in keep}
+    return history
+
+
+def pick_candidates(quick, hist_keys=frozenset()):
     """Выбирает конфиги для реального теста (см. описание в начале файла).
-    quick уже отсортирован по ping_ms."""
+    quick уже отсортирован по ping_ms. Серверы из истории идут первыми."""
     rng = random.Random()
-    hy2 = [e for e in quick if e.get("proto") == "hysteria2"]
-    other = [e for e in quick if e.get("proto") != "hysteria2"]
+    priority = [e for e in quick if entry_key(e) in hist_keys][:HISTORY_INJECT]
+    pri_keys = {entry_key(e) for e in priority}
+    pool = [e for e in quick if entry_key(e) not in pri_keys]
+    hy2 = [e for e in pool if e.get("proto") == "hysteria2"]
+    other = [e for e in pool if e.get("proto") != "hysteria2"]
     reality = [e for e in other if e.get("security_tag") == "reality"]
     plain = [e for e in other if e.get("security_tag") != "reality"]
 
@@ -573,17 +684,24 @@ def pick_candidates(quick):
     rest = plain[FAST_CAP:]
     random_pick = rng.sample(rest, min(len(rest), RANDOM_CAP))
 
-    print("Выборка для этапа 2: Hysteria2 %d (из %d), Reality %d (из %d), "
+    print("Выборка для этапа 2: из истории %d, Hysteria2 %d (из %d), Reality %d (из %d), "
           "vless/trojan по пингу %d + случайных %d (из %d)"
-          % (len(hy2_pick), len(hy2), len(reality_pick), len(reality),
+          % (len(priority), len(hy2_pick), len(hy2), len(reality_pick), len(reality),
              len(fast_pick), len(random_pick), len(plain)))
-    return hy2_pick + reality_pick + fast_pick + random_pick
+    return priority + hy2_pick + reality_pick + fast_pick + random_pick
 
 
 # =====================================================================
 def main():
     with open(IN_FILE, "r", encoding="utf-8") as f:
         configs = json.load(f)
+
+    use_history = REAL_TEST_ENABLED and os.path.exists(SINGBOX_BIN)
+    history, hist_keys = {}, set()
+    if use_history:
+        history = load_history()
+        configs, hist_keys, n_injected = inject_history(configs, history)
+        print("История: записей %d, из них добавлено в проверку %d" % (len(history), n_injected))
 
     print("Этап 1: быстрый отсев %d серверов (порог %d мс)..." % (len(configs), MAX_PING_MS))
     quick = []
@@ -593,6 +711,8 @@ def main():
                 quick.append(res)
     quick.sort(key=lambda e: e["ping_ms"])
     print("Этап 1 пройден: %d из %d" % (len(quick), len(configs)))
+    if use_history:
+        note_stage1_failures(history, hist_keys, quick)
 
     final = quick
     if not REAL_TEST_ENABLED:
@@ -600,7 +720,7 @@ def main():
     elif not os.path.exists(SINGBOX_BIN):
         print("⚠️ sing-box не найден (%s) — используем результат этапа 1." % SINGBOX_BIN)
     else:
-        candidates = pick_candidates(quick)
+        candidates = pick_candidates(quick, hist_keys)
         print("Этап 2: реальный тест через sing-box для %d серверов..." % len(candidates))
         passed, stats = real_test(candidates)
         print("Этап 2: проверено %(tested)d, прошли %(passed)d, не поддерживается %(unsupported)d, "
@@ -613,6 +733,16 @@ def main():
         else:
             passed.sort(key=lambda e: e["real_ms"])
             final = passed
+            if use_history:
+                now = int(time.time())
+                update_history(history, TESTED_KEYS, passed, now)
+                extra = carried_over(history, passed)
+                if extra:
+                    print("История: оставлено после единичного сбоя: %d" % len(extra))
+                    final = sorted(passed + extra, key=lambda e: e.get("real_ms", 9999))
+                history = prune_history(history, now)
+                save_history(history)
+                print("История: сохранено записей %d" % len(history))
 
     hy2_count = sum(1 for e in final if e.get("proto") == "hysteria2")
     print("Итого в pinged_configs.json: %d (из них Hysteria2: %d)" % (len(final), hy2_count))
