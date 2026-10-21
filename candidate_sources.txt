@@ -61,10 +61,10 @@
 
 
 
+
 https://raw.githubusercontent.com/Danialsamadi/v2go/main/Splitted-By-Protocol/hy2.txt
 https://raw.githubusercontent.com/Danialsamadi/v2go/main/Sub2.txt
 https://raw.githubusercontent.com/Danialsamadi/v2go/main/Sub3.txt
-https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/nodes.txt
 https://raw.githubusercontent.com/Mosifree/-FREE2CONFIG/refs/heads/main/Vless
 https://raw.githubusercontent.com/coldwater-10/V2ray-Configs/main/Sub1.txt
 https://raw.githubusercontent.com/coldwater-10/V2ray-Configs/main/Sub2.txt

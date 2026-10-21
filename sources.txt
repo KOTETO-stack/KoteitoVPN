@@ -16,6 +16,7 @@
 
 
 
+
 https://github.com/Argh94/Proxy-List/raw/refs/heads/main/All_Config.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_001.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_002.txt
@@ -225,4 +226,5 @@ https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/vless.txt
 https://raw.githubusercontent.com/wuqb2i4f/xray-config-toolkit/main/output/base64/mix-uri
 https://raw.githubusercontent.com/xiaoji235/airport-free/main/v2ray.txt
 https://raw.githubusercontent.com/youfoundamin/V2rayCollector/main/mixed_iran.txt
+https://raw.githubusercontent.com/zhuhaiuk/free-nodes/main/nodes.txt
 https://www.xrayvip.com/free.txt
