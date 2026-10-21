@@ -59,6 +59,7 @@ vless://dc7d45c9-c942-41e3-b880-9a7fd5b64e2f@199.232.78.159:443?pcs=CD6E838B9BFE
 trojan://humanity@www.speedtest.net:443?path=%2Fassignment&security=tls&insecure=0&host=www.calmlunch.com&ech=ip.gs%2Budp%3A%2F%2F8.8.8.8&type=ws&allowInsecure=0&sni=www.calmlunch.com#%F0%9F%87%AB%F0%9F%87%B7%40FreakConfig
 vless://524b6fd3-2aef-4e11-995f-4d6243a5ae9a@tun2.w-ert.org:42924?security=reality&encryption=none&pbk=woId47r1U8pEuDwHoC026bJHVWha2RHjufq1Kw3QoRU&headerType=none&fp=chrome&type=tcp&sni=www.aparat.com&sid=ca4134a0ed2592b6#%F0%9F%8F%B4%E2%80%8D%E2%98%A0%EF%B8%8F%40FreakConfig
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.236.57.31:22224?security=none&encryption=none&headerType=none&type=tcp#%F0%9F%8F%B4%E2%80%8D%E2%98%A0%EF%B8%8F%40FreakConfig
+vless://e6df2095-a73c-4043-8693-8d5a03686870@172.67.155.65:8443?path=%2Fcart%2Fdocs%2Fwww%2Fproxyip%3Fed%23Telegram---PLANB_NET---PLANB_NET---PLANB_NET---PLANB_NET&security=tls&encryption=none&insecure=0&host=lucasjow.us.ci&ech=cloudflare-ech.com%2Budp%3A%2F%2F8.8.8.8&type=ws&allowInsecure=0&sni=lucasjow.us.ci#%F0%9F%8F%B4%E2%80%8D%E2%98%A0%EF%B8%8F%40FreakConfig
 vless://eccc053a-7196-47cb-a4b5-f4b8bfd743d9@199.232.78.159:443?pcs=CD6E838B9BFE31CAB8B3D5C858B0D6223FE84ECE236C1FDB281BE93C302E1E6E&path=%2F%3FTELEGRAM-TOOTFFARANGI&security=tls&encryption=none&insecure=0&host=copy_az_channel_NUFiLTER_5i.global.ssl.fastly.net.&type=ws&allowInsecure=0&sni=firefox.com#%F0%9F%87%A9%F0%9F%87%AA%40FreakConfig
 trojan://mitivpn@167.82.64.46:443?pcs=cd6e838b9bfe31cab8b3d5c858b0d6223fe84ece236c1fdb281be93c302e1e6e&path=%2F%3FTelegram---PLANB_NET---PLANB_NET---PLANB_NET---PLANB_NET&security=tls&alpn=http%2F1.1&insecure=0&host=mitivpn-mitivpn-mitivpn.global.ssl.fastly.net&fp=chrome&type=ws&allowInsecure=0&sni=firefox.com#%F0%9F%87%A9%F0%9F%87%AA%40FreakConfig
 vless://eccc053a-7196-47cb-a4b5-f4b8bfd743d9@146.75.59.186:443?pcs=CD6E838B9BFE31CAB8B3D5C858B0D6223FE84ECE236C1FDB281BE93C302E1E6E&path=%2F&security=tls&encryption=none&insecure=0&host=copy_az_channel_NUFiLTER_3i.global.ssl.fastly.net.&type=ws&allowInsecure=0&sni=firefox.com#%F0%9F%87%A9%F0%9F%87%AA%40FreakConfig
@@ -66,7 +67,6 @@ vless://eccc053a-7196-47cb-a4b5-f4b8bfd743d9@146.75.59.186:443?pcs=CD6E838B9BFE3
 vless://eccc053a-7196-47cb-a4b5-f4b8bfd743d9@199.232.78.159:443?pcs=CD6E838B9BFE31CAB8B3D5C858B0D6223FE84ECE236C1FDB281BE93C302E1E6E&path=%2F%3FTELEGRAM-DailyConfigs&security=tls&encryption=none&insecure=0&host=copy_az_channel_NUFiLTER_5i.global.ssl.fastly.net.&type=ws&allowInsecure=0&sni=firefox.com#%F0%9F%87%A9%F0%9F%87%AA%40FreakConfig
 trojan://humanity@188.114.98.0:443?path=%2Fassignment&security=tls&alpn=http%2F1.1&insecure=0&host=www.calmlunch.com&fp=chrome&ech=cloudflare-ech.com%2Budp%3A%2F%2F1.1.1.1&type=ws&allowInsecure=0&sni=www.calmlunch.com#%F0%9F%87%AB%F0%9F%87%B7%40FreakConfig
 vless://20ff936a-8eb5-4d27-9cce-93f2016d467b@188.114.98.0:443?path=%2F&security=tls&alpn=http%2F1.1&encryption=none&insecure=0&host=free.nadun.store&fp=chrome&ech=cloudflare-ech.com%2Budp%3A%2F%2F1.1.1.1&type=ws&allowInsecure=0&sni=free.nadun.store#%F0%9F%87%B8%F0%9F%87%AC%40FreakConfig
-vless://e6df2095-a73c-4043-8693-8d5a03686870@172.67.155.65:8443?path=%2Fcart%2Fdocs%2Fwww%2Fproxyip%3Fed%23Telegram---PLANB_NET---PLANB_NET---PLANB_NET---PLANB_NET&security=tls&encryption=none&insecure=0&host=lucasjow.us.ci&ech=cloudflare-ech.com%2Budp%3A%2F%2F8.8.8.8&type=ws&allowInsecure=0&sni=lucasjow.us.ci#%F0%9F%8F%B4%E2%80%8D%E2%98%A0%EF%B8%8F%40FreakConfig
 trojan://mitivpn@146.75.57.238:443?pcs=cd6e838b9bfe31cab8b3d5c858b0d6223fe84ece236c1fdb281be93c302e1e6e&security=tls&alpn=http%2F1.1&insecure=0&host=mitivpn--s3.global.ssl.fastly.net&fp=chrome&type=ws&allowInsecure=0&sni=www.google.com#%F0%9F%87%A9%F0%9F%87%AA%40FreakConfig
 vless://d1cafeeb-2861-4d1e-a462-38f16442f5b2@wwww.qarvian.ir:443?pcs=CD6E838B9BFE31CAB8B3D5C858B0D6223FE84ECE236C1FDB281BE93C302E1E6E&security=tls&encryption=none&insecure=0&host=copy_az_channel_NUFiLTER_i.global.ssl.fastly.net.&type=ws&allowInsecure=0&sni=google.com#%F0%9F%87%A9%F0%9F%87%AA%40FreakConfig
 vless://d1cafeeb-2861-4d1e-a462-38f16442f5b2@199.232.78.159:443?pcs=CD6E838B9BFE31CAB8B3D5C858B0D6223FE84ECE236C1FDB281BE93C302E1E6E&security=tls&encryption=none&insecure=0&host=copy_az_channel_NUFiLTER_i.global.ssl.fastly.net.&type=ws&allowInsecure=0&sni=google.com#%F0%9F%87%A9%F0%9F%87%AA%40FreakConfig
@@ -817,8 +817,6 @@ vless://e2e634e7-f684-4885-98d5-b706c0a66c93@tel.ArV2ray.host:443?security=tls&e
 vless://075232d9-82c0-4500-b049-812e944c655c@shop.frahidx.ir:2044?encryption=none&fp=ios&headerType=http&host=play.google.com&path=%2F&pbk=gjTtmitQwQ-RqfeieYrfdba0R08zcdwh4h4YGBCnVRo&security=reality&sid=0be408ac733a5da5&sni=google-analytics.com&spx=%2FGOJJb7rYbXlqVHW&type=tcp#test
 vless://e5fe3a99-8fb5-4475-a45c-4966575088e2@ip1.hsrdnr.ir:8880?encryption=none&security=none&type=httpupgrade&host=shad.hsrdnr.ir&path=%2F%3Fed%3D2080#%D9%85%D9%88%D9%82%D8%AA
 vless://6a8d7e9c-cc55-4816-80aa-e7cdfebc96b9@31.43.179.0:8880?type=httpupgrade&path=%2F%3Fed%3D2080&host=shad.hsrdnr.ir&security=none#%D9%85%D9%88%D9%82%D8%AA2
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@16.61.117.36:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.24.54.202:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@35.181.176.187:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.39.184.235:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.169.146.8:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
@@ -831,8 +829,8 @@ vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.171.196.218:22222?encryption=non
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.44.187.221:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.44.147.45:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.224.233.221:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@3.8.50.211:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.169.30.173:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.134.170.98:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@3.11.48.149:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.224.127.95:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.236.166.199:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@35.177.104.48:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
@@ -850,8 +848,8 @@ vless://e4514801-0d5a-42ba-869f-39bd605aef9e@3.9.113.212:22222?encryption=none&s
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.135.18.254:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.37.116.116:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@52.47.87.160:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.42.3.48:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.135.154.209:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@16.61.117.36:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.24.54.202:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.45.24.141:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.224.172.161:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.24.101.15:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
@@ -870,7 +868,8 @@ vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.41.71.80:22222?encryption=none&s
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@35.179.28.85:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.224.236.155:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.44.145.134:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.42.128.77:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@3.8.50.211:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.169.30.173:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.236.151.71:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.224.130.26:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.135.65.80:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
@@ -889,8 +888,8 @@ vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.42.156.175:22222?encryption=none
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@52.56.110.129:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@35.181.252.118:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.39.227.23:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@51.24.201.252:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
-vless://e4514801-0d5a-42ba-869f-39bd605aef9e@35.176.35.152:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.42.3.48:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.135.154.209:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@35.180.5.45:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.224.129.188:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.41.28.55:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
@@ -909,6 +908,7 @@ vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.132.151.243:22222?encryption=non
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@18.134.93.203:22222?encryption=none&security=none&type=tcp#(S102)🇬🇧t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@35.181.177.168:22222?encryption=none&security=none&type=tcp#(S103)🇨🇵t.me/PrivateVPNs
 vless://e4514801-0d5a-42ba-869f-39bd605aef9e@15.188.168.192:22222?encryption=none&security=none&type=tcp#(S104)🇨🇵t.me/PrivateVPNs
+vless://e4514801-0d5a-42ba-869f-39bd605aef9e@13.42.128.77:22222?encryption=none&security=none&type=tcp#(S101)🇬🇧t.me/PrivateVPNs
 vless://bc659d88-a1e0-4c65-a49a-7b51b26a7a7f@179.254.71.20:52006?security=tls&encryption=none&insecure=0&headerType=none&type=tcp&allowInsecure=0&flow=xtls-rprx-vision&sni=pl.setlisting.ru#Free%20x660%20%40Outline_Vpn
 vless://e8b1500b-e9e8-5492-8312-f4eadf7d0767@162.19.10.99:443?security=tls&alpn=h2&encryption=none&insecure=0&headerType=none&fp=chrome&type=tcp&allowInsecure=0&flow=xtls-rprx-vision&sni=nasnet-162191099-direct.mbghalibaf.com#Free%20x661%20%40Outline_Vpn
 vless://025a80fb-233b-4714-b02d-f4384c653d58@103.27.157.120:443?security=reality&encryption=none&pbk=k0883nIGfstbzb8hES-dQ1yPcBwbUbnsyg4w-UA5gkA&headerType=none&type=tcp&flow=xtls-rprx-vision&sni=download.amd.com&sid=68aaa5222092bbea#Free%20x662%20%40Outline_Vpn
