@@ -11,7 +11,8 @@ build_subscription.py
 
 Как делится пул:
  - все конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных
-   транспортов, TCP-протоколов, подтверждений пользователей и давления блокировок);
+   транспортов, TCP-протоколов, подтверждений пользователей, давления блокировок
+   и советов ИИ из output/ai_advice.json);
  - лучшие раздаются по кругу: 1-й в подписку 1, 2-й в подписку 2, и так далее;
  - в каждой подписке не больше MAX_SERVERS серверов и не больше MAX_PER_COUNTRY
    серверов одной страны; конфиг, который не влез по этим лимитам, идёт в
@@ -29,8 +30,16 @@ import base64
 import json
 import os
 import re
+import sys
 import urllib.parse
 from datetime import datetime, timedelta, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from ai_weights import score as ai_score
+except Exception:
+    def ai_score(uri):
+        return 0
 
 IN_FILE = os.path.join(os.path.dirname(__file__), "..", "masked_configs.json")
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
@@ -56,6 +65,9 @@ EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России
 
 REPORT_BONUS_MS = 150                 # подтверждённый человеком сервер важнее
 REPORT_TTL_HOURS = 48                 # сколько часов подтверждение актуально
+
+AI_POINT_MS = 5                       # 1 балл совета ИИ = 5 мс бонуса
+AI_MAX_BONUS_MS = 150                 # потолок влияния ИИ (не выше подтверждения человеком)
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
@@ -137,6 +149,10 @@ def make_sort_key(reports, now):
         display_name = c.get("display_name") or c.get("remark") or "VPN"
         if is_confirmed(display_name, reports, now):
             bonus += REPORT_BONUS_MS
+
+        # Советы ИИ: только сдвиг порядка, с потолком.
+        ai_bonus = ai_score(rename_uri(c.get("raw", ""), display_name)) * AI_POINT_MS
+        bonus += max(-AI_MAX_BONUS_MS, min(AI_MAX_BONUS_MS, ai_bonus))
 
         return ping - bonus
     return sort_key
