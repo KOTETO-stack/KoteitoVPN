@@ -2,6 +2,7 @@
 Вес влияет только на порядок сортировки, не на то, пройдёт ли сервер проверку."""
 import json
 import os
+import re
 from urllib.parse import urlparse, parse_qs, unquote
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,6 +12,8 @@ ALLOWED_FIELDS = {"protocol", "security", "port", "country"}
 ALLOWED_PROTOCOLS = {"vless", "trojan", "hysteria2"}
 ALLOWED_SECURITY = {"reality", "tls", "none"}
 MAX_WEIGHT = 20
+
+FLAG_RE = re.compile("[\U0001F1E6-\U0001F1FF]{2}")
 
 
 def describe(uri):
@@ -27,8 +30,9 @@ def describe(uri):
             port = str(u.port or "")
         except ValueError:
             port = ""
-        name = unquote(u.fragment or "").strip()
-        country = name.split(" ")[-1] if name else ""
+        name = unquote(u.fragment or "")
+        m = FLAG_RE.search(name)
+        country = m.group(0) if m else ""
         return {"protocol": proto, "security": security, "port": port, "country": country}
     except Exception:
         return {}
@@ -57,7 +61,7 @@ def load_rules(path=ADVICE_PATH):
             continue
         if field == "port" and not value.isdigit():
             continue
-        if field == "country" and not (0 < len(value) <= 8):
+        if field == "country" and not FLAG_RE.fullmatch(value):
             continue
         weight = max(-MAX_WEIGHT, min(MAX_WEIGHT, weight))
         rules.append((field, value, weight))
