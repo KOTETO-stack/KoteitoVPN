@@ -1,21 +1,43 @@
 """ИИ-советник. Получает только сводную статистику (без ссылок и имён серверов)
 и данные OONI, возвращает JSON с правилами приоритета.
-ИИ не выбирает серверы и не видит ссылки."""
+ИИ не выбирает серверы и не видит ссылки.
+При ошибке присылает причину в Telegram."""
 import base64
 import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ai_weights import describe, ALLOWED_FIELDS, ALLOWED_PROTOCOLS, ALLOWED_SECURITY, MAX_WEIGHT
+from ai_weights import describe, ALLOWED_FIELDS, MAX_WEIGHT
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "output")
-MODEL = os.environ.get("AI_MODEL", "openai/gpt-4o-mini")
+MODELS = [m for m in [os.environ.get("AI_MODEL", ""), "openai/gpt-4o-mini", "openai/gpt-4.1-mini"] if m]
 API_URL = "https://models.github.ai/inference/chat/completions"
+
+
+def telegram(text):
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat:
+        return
+    body = json.dumps({"chat_id": chat, "text": text[:3500]}).encode()
+    req = urllib.request.Request(
+        "https://api.telegram.org/bot%s/sendMessage" % token,
+        data=body, headers={"Content-Type": "application/json"})
+    try:
+        urllib.request.urlopen(req, timeout=30).read()
+    except Exception as e:
+        print("Telegram: ошибка", e)
+
+
+def fail(msg):
+    print(msg)
+    telegram("🤖 ИИ-советник: " + msg)
 
 
 def read_links(path):
@@ -50,7 +72,7 @@ def read_ooni():
         return "нет данных"
 
 
-def ask_model(payload):
+def ask_model(model, payload):
     token = os.environ.get("GITHUB_TOKEN", "")
     system = (
         "Ты советник по приоритету VPN-серверов для пользователей в России. "
@@ -63,7 +85,7 @@ def ask_model(payload):
         "Положительный вес поднимает приоритет, отрицательный понижает."
     )
     body = json.dumps({
-        "model": MODEL,
+        "model": model,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
@@ -74,6 +96,7 @@ def ask_model(payload):
     req = urllib.request.Request(API_URL, data=body, headers={
         "Authorization": "Bearer " + token,
         "Content-Type": "application/json",
+        "Accept": "application/vnd.github+json",
     })
     with urllib.request.urlopen(req, timeout=90) as r:
         data = json.loads(r.read().decode())
@@ -105,26 +128,12 @@ def validate(raw, stats):
     return {"rules": rules, "comment": comment}
 
 
-def telegram(text):
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat = os.environ.get("TELEGRAM_CHAT_ID")
-    if not token or not chat:
-        return
-    body = json.dumps({"chat_id": chat, "text": text}).encode()
-    req = urllib.request.Request(
-        "https://api.telegram.org/bot%s/sendMessage" % token,
-        data=body, headers={"Content-Type": "application/json"})
-    try:
-        urllib.request.urlopen(req, timeout=30).read()
-    except Exception as e:
-        print("Telegram: ошибка", e)
-
-
 def main():
     links = read_links(os.path.join(OUT, "subscription.txt"))
     pool = read_links(os.path.join(OUT, "raw_servers.txt"))
+    print("Ссылок в подписке: %d, в пуле: %d" % (len(links), len(pool)))
     if not links and not pool:
-        print("Нет данных для анализа, выходим")
+        fail("нет данных для анализа (output/subscription.txt и raw_servers.txt пусты или не найдены)")
         return
     stats = summarize(pool or links)
     payload = {
@@ -133,15 +142,31 @@ def main():
         "ooni": read_ooni(),
         "жалоба": "на сотовой сети (LTE) работают в основном Hysteria2, vless/trojan часто нет",
     }
-    try:
-        raw = ask_model(payload)
-    except Exception as e:
-        print("Ошибка модели:", e)
+
+    raw = None
+    errors = []
+    for model in MODELS:
+        try:
+            raw = ask_model(model, payload)
+            print("Модель ответила:", model)
+            break
+        except urllib.error.HTTPError as e:
+            try:
+                detail = e.read().decode("utf-8", "ignore")[:200]
+            except Exception:
+                detail = ""
+            errors.append("%s: HTTP %s %s" % (model, e.code, detail))
+        except Exception as e:
+            errors.append("%s: %s" % (model, e))
+    if raw is None:
+        fail("модель не ответила.\n" + "\n".join(errors))
         return
+
     advice = validate(raw, stats)
     if advice is None:
-        print("Ответ модели не прошёл проверку, советы не изменены")
+        fail("ответ модели не прошёл проверку: " + raw[:200])
         return
+
     with open(os.path.join(OUT, "ai_advice.json"), "w", encoding="utf-8") as f:
         json.dump(advice, f, ensure_ascii=False, indent=2)
     lines = ["🤖 ИИ-советник", advice["comment"] or "без комментария"]
