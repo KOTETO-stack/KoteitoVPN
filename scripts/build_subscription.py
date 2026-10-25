@@ -11,8 +11,8 @@ build_subscription.py
 
 Как делится пул:
  - все конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных
-   транспортов, trojan, подтверждений пользователей, давления блокировок
-   и советов ИИ из output/ai_advice.json);
+   транспортов, trojan, оценки маскировки, подтверждений пользователей,
+   давления блокировок и советов ИИ из output/ai_advice.json);
  - лучшие раздаются по кругу: 1-й в подписку 1, 2-й в подписку 2, и так далее;
  - в каждой подписке не больше MAX_SERVERS серверов и не больше MAX_PER_COUNTRY
    серверов одной страны; конфиг, который не влез по этим лимитам, идёт в
@@ -23,12 +23,16 @@ build_subscription.py
  - каждая подписка добивается запасными до круглого десятка (101 -> 110), но
    каждый запасной сервер используется только один раз.
 
+Оценка маскировки (mask_info) смотрит только на параметры в ссылке и только
+сдвигает порядок, серверы не отбрасывает.
+
 Если для подписки серверов нет, её файл не перезаписывается (остаётся прошлая версия).
 
 Остальное как раньше: remark -> "Страна Город Флаг", подтверждённые серверы
 помечаются "✅", результат кодируется в base64 (формат Karing/Hiddyfi/v2rayNG).
 """
 import base64
+import ipaddress
 import json
 import os
 import re
@@ -74,6 +78,11 @@ REPORT_TTL_HOURS = 48                 # сколько часов подтвер
 
 AI_POINT_MS = 5                       # 1 балл совета ИИ = 5 мс бонуса
 AI_MAX_BONUS_MS = 150                 # потолок влияния ИИ (не выше подтверждения человеком)
+
+MASK_POINT_MS = 10                    # 1 балл маскировки = 10 мс бонуса
+MASK_MAX_BONUS_MS = 40                # потолок влияния оценки маскировки
+
+HY2_SCHEMES = {"hysteria2", "hy2"}
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 SECURITY_RE = re.compile(r"[?&]security=([a-zA-Z0-9_-]+)", re.IGNORECASE)
@@ -156,6 +165,62 @@ def vless_allowed(c) -> bool:
     return True
 
 
+def _is_ip(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host.strip().strip("[]"))
+        return True
+    except ValueError:
+        return False
+
+
+def mask_info(c) -> dict:
+    """Оценка маскировки по параметрам ссылки.
+    Плюсы: Reality с flow vision, нормальный sni (домен), порт 443, obfs у Hy2.
+    Минусы: insecure=1, пустой sni или IP вместо домена."""
+    info = {"score": 0, "vision": False, "insecure": False, "ip_sni": False, "obfs": False}
+    raw = c.get("raw", "")
+    try:
+        u = urllib.parse.urlparse(raw)
+        q = {k.lower(): v for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)}
+        port = u.port
+        scheme = (u.scheme or "").lower()
+    except Exception:
+        return info
+
+    proto = (c.get("proto") or scheme or "").lower()
+    security = q.get("security", "").lower()
+    is_reality = c.get("security_tag") == "reality" or security == "reality"
+    is_hy2 = proto in HY2_SCHEMES or scheme in HY2_SCHEMES
+    uses_tls = is_reality or security == "tls" or is_hy2 or proto == "trojan"
+    sni = (q.get("sni") or q.get("peer") or q.get("servername") or "").strip()
+
+    if uses_tls:
+        if not sni:
+            info["score"] -= 1
+        elif _is_ip(sni):
+            info["ip_sni"] = True
+            info["score"] -= 1
+        else:
+            info["score"] += 1
+
+    if is_reality and "vision" in q.get("flow", "").lower():
+        info["vision"] = True
+        info["score"] += 1
+
+    if q.get("insecure", "").lower() in ("1", "true") or q.get("allowinsecure", "").lower() in ("1", "true"):
+        info["insecure"] = True
+        info["score"] -= 2
+
+    if is_hy2 and q.get("obfs"):
+        info["obfs"] = True
+        info["score"] += 1
+
+    if port == 443:
+        info["score"] += 1
+
+    return info
+
+
 def make_sort_key(reports, now):
     pressure = load_ooni_pressure()
     high_pressure = pressure is not None and pressure >= OONI_PRESSURE_THRESHOLD
@@ -173,6 +238,10 @@ def make_sort_key(reports, now):
             bonus += TRANSPORT_BONUS_MS
         if c.get("proto") in CELLULAR_PROTOCOLS:
             bonus += cellular_bonus
+
+        # Оценка маскировки: только сдвиг порядка, с потолком.
+        mask_bonus = mask_info(c)["score"] * MASK_POINT_MS
+        bonus += max(-MASK_MAX_BONUS_MS, min(MASK_MAX_BONUS_MS, mask_bonus))
 
         display_name = c.get("display_name") or c.get("remark") or "VPN"
         if is_confirmed(display_name, reports, now):
@@ -284,11 +353,16 @@ def render_subscription(configs, reports, now, out_sub, out_readable, label):
         if is_confirmed(c.get("display_name") or c.get("remark") or "VPN", reports, now)
     )
     countries_count = len({c.get("country_code", "??") for c in configs})
+    masks = [mask_info(c) for c in configs]
     print(f"[{label}] вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
           f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
           f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
           f"подтверждено пользователями: {confirmed_count}, "
           f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
+    print(f"[{label}] маскировка: vision {sum(m['vision'] for m in masks)}, "
+          f"insecure {sum(m['insecure'] for m in masks)}, "
+          f"sni-IP {sum(m['ip_sni'] for m in masks)}, "
+          f"obfs {sum(m['obfs'] for m in masks)}.")
     print(f"[{label}] файл: {out_sub}")
 
 
