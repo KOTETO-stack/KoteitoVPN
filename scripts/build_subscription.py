@@ -11,7 +11,7 @@ build_subscription.py
 
 Как делится пул:
  - все конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных
-   транспортов, trojan, оценки маскировки, подтверждений пользователей,
+   транспортов, оценки маскировки, подтверждений пользователей,
    давления блокировок и советов ИИ из output/ai_advice.json);
  - лучшие раздаются по кругу: 1-й в подписку 1, 2-й в подписку 2, и так далее;
  - в каждой подписке не больше MAX_SERVERS серверов и не больше MAX_PER_COUNTRY
@@ -65,9 +65,9 @@ MAX_SERVERS = 200                     # максимум серверов в О�
 REALITY_BONUS_MS = 50
 TRANSPORT_BONUS_MS = 20               # для type=xhttp/grpc/ws
 CELLULAR_BONUS_MS = 80                # бонус протоколам из CELLULAR_PROTOCOLS
-CELLULAR_PROTOCOLS = {"trojan"}       # на LTE проходят trojan и hy2; vless в бонус не входит
+CELLULAR_PROTOCOLS = set()            # пусто: тест на LTE показал, что дело в серверах, а не в протоколе
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-MAX_PER_COUNTRY = 20                  # максимум серверов одной страны в ОДНОЙ подписке
+MAX_PER_COUNTRY = 12                  # максимум серверов одной страны в ОДНОЙ подписке
 EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России не помогают обходить блокировки РКН
 
 ALLOW_VLESS = True                    # False = vless не берётся совсем
