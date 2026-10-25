@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 xray_mask.py
-uTLS fingerprint (fp=chrome) + нормализация WS host/path. SNI не подменяется
-на произвольный домен - только если он уже стоял в исходном конфиге.
+uTLS fingerprint (fp=chrome) для vless/trojan с TLS или Reality, если fp не задан.
+Ничего больше в ссылке не меняется: SNI, path, host и остальные параметры задаёт
+сервер, подмена ломает рабочие серверы.
 Результат: masked_configs.json
 """
 import json
@@ -27,17 +28,14 @@ def mask_uri(raw: str) -> str:
 
     params = dict(urllib.parse.parse_qsl(query_str, keep_blank_values=True))
 
+    proto_l = proto.lower()
     security = params.get("security", "").lower()
-    has_tls = security in ("tls", "reality") or proto.lower() == "hysteria2"
+    has_utls = proto_l != "hysteria2" and proto_l != "hy2" and (
+        security in ("tls", "reality") or proto_l == "trojan"
+    )
 
-    if has_tls and "fp" not in params:
+    if has_utls and "fp" not in params:
         params["fp"] = "chrome"
-
-    net = params.get("type", "").lower()
-    if net == "ws":
-        params.setdefault("path", "/api/v1/stream")
-        if not params.get("host"):
-            params["host"] = params.get("sni", "")
 
     new_query = urllib.parse.urlencode(params, safe=":/")
     new_rest = head + ("?" + new_query if new_query else "")
