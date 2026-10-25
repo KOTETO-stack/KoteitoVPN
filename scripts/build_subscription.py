@@ -11,8 +11,8 @@ build_subscription.py
 
 Как делится пул:
  - все конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных
-   транспортов, оценки маскировки, подтверждений пользователей,
-   давления блокировок и советов ИИ из output/ai_advice.json);
+   транспортов, оценки маскировки, подтверждений пользователей, давления
+   блокировок и советов ИИ; штраф за недоступность из РФ по output/ru_probe.json);
  - лучшие раздаются по кругу: 1-й в подписку 1, 2-й в подписку 2, и так далее;
  - в каждой подписке не больше MAX_SERVERS серверов и не больше MAX_PER_COUNTRY
    серверов одной страны; конфиг, который не влез по этим лимитам, идёт в
@@ -23,8 +23,8 @@ build_subscription.py
  - каждая подписка добивается запасными до круглого десятка (101 -> 110), но
    каждый запасной сервер используется только один раз.
 
-Оценка маскировки (mask_info) смотрит только на параметры в ссылке и только
-сдвигает порядок, серверы не отбрасывает.
+Оценка маскировки (mask_info) и штраф проверки из РФ только сдвигают порядок,
+серверы не отбрасывают.
 
 Если для подписки серверов нет, её файл не перезаписывается (остаётся прошлая версия).
 
@@ -37,6 +37,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
@@ -55,6 +56,7 @@ OUT_SUB_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular.txt")
 OUT_READABLE_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular_readable.txt")
 REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 OONI_INDEX_FILE = os.path.join(OUT_DIR, "ooni_censorship_index.json")
+PROBE_FILE = os.path.join(OUT_DIR, "ru_probe.json")
 
 SUBSCRIPTION_COUNT = 2                # на сколько подписок делить пул (2 и больше)
 
@@ -82,6 +84,9 @@ AI_MAX_BONUS_MS = 150                 # потолок влияния ИИ (не
 MASK_POINT_MS = 10                    # 1 балл маскировки = 10 мс бонуса
 MASK_MAX_BONUS_MS = 40                # потолок влияния оценки маскировки
 
+PROBE_PENALTY_MS = 100                # максимальный штраф за недоступность из РФ (0 = выключено)
+PROBE_TTL_HOURS = 48                  # старше этого результат проверки не учитывается
+
 HY2_SCHEMES = {"hysteria2", "hy2"}
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
@@ -94,6 +99,18 @@ def load_reports():
     try:
         with open(REPORTS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def load_probe():
+    """Читает output/ru_probe.json (результаты проверки с российских узлов)."""
+    if PROBE_PENALTY_MS <= 0 or not os.path.exists(PROBE_FILE):
+        return {}
+    try:
+        with open(PROBE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
     except (json.JSONDecodeError, OSError):
         return {}
 
@@ -221,15 +238,52 @@ def mask_info(c) -> dict:
     return info
 
 
-def make_sort_key(reports, now):
+def probe_key(raw: str):
+    """host:port для vless/trojan (так записаны результаты в ru_probe.json)."""
+    try:
+        u = urllib.parse.urlparse(raw)
+        if (u.scheme or "").lower() not in ("vless", "trojan"):
+            return None
+        if not u.hostname or not u.port:
+            return None
+        return "%s:%d" % (u.hostname.lower(), u.port)
+    except Exception:
+        return None
+
+
+def probe_penalty_ms(c, probe, now_ts) -> float:
+    """Штраф за недоступность из РФ: доля не ответивших узлов * PROBE_PENALTY_MS.
+    Нет данных, данные старые или это Hy2: штрафа нет."""
+    if PROBE_PENALTY_MS <= 0 or not probe:
+        return 0
+    key = probe_key(c.get("raw", ""))
+    entry = probe.get(key) if key else None
+    if not entry:
+        return 0
+    try:
+        if now_ts - float(entry.get("t", 0)) > PROBE_TTL_HOURS * 3600:
+            return 0
+        total = int(entry.get("total", 0))
+        ok = int(entry.get("ok", 0))
+    except (TypeError, ValueError):
+        return 0
+    if total <= 0:
+        return 0
+    return PROBE_PENALTY_MS * (1.0 - ok / float(total))
+
+
+def make_sort_key(reports, now, probe):
     pressure = load_ooni_pressure()
     high_pressure = pressure is not None and pressure >= OONI_PRESSURE_THRESHOLD
     multiplier = OONI_HIGH_PRESSURE_MULTIPLIER if high_pressure else 1
     reality_bonus = REALITY_BONUS_MS * multiplier
     cellular_bonus = CELLULAR_BONUS_MS * multiplier
+    now_ts = time.time()
     if pressure is not None:
         print(f"Индикатор давления блокировок OONI (РФ): {pressure}% "
               f"({'высокое, бонусы усилены' if high_pressure else 'в норме'})")
+    if probe:
+        print(f"Проверка из РФ: записей {len(probe)}, штраф до {PROBE_PENALTY_MS} мс")
 
     def sort_key(c):
         ping = c.get("ping_ms", 9999)
@@ -251,7 +305,10 @@ def make_sort_key(reports, now):
         ai_bonus = ai_score(rename_uri(c.get("raw", ""), display_name)) * AI_POINT_MS
         bonus += max(-AI_MAX_BONUS_MS, min(AI_MAX_BONUS_MS, ai_bonus))
 
-        return ping - bonus
+        # Штраф за недоступность из РФ (мягкий).
+        penalty = probe_penalty_ms(c, probe, now_ts)
+
+        return ping - bonus + penalty
     return sort_key
 
 
@@ -322,7 +379,7 @@ def pad_to_ten(group, leftovers):
     return group
 
 
-def render_subscription(configs, reports, now, out_sub, out_readable, label):
+def render_subscription(configs, reports, now, probe, out_sub, out_readable, label):
     if not configs:
         print(f"[{label}] серверов нет, файл не перезаписан, остаётся прошлая версия")
         return
@@ -354,6 +411,13 @@ def render_subscription(configs, reports, now, out_sub, out_readable, label):
     )
     countries_count = len({c.get("country_code", "??") for c in configs})
     masks = [mask_info(c) for c in configs]
+    now_ts = time.time()
+    probe_bad = sum(1 for c in configs if probe_penalty_ms(c, probe, now_ts) > 0)
+    probe_known = sum(
+        1 for c in configs
+        if probe.get(probe_key(c.get("raw", "")) or "", {}).get("t", 0)
+        and now_ts - float(probe[probe_key(c.get("raw", ""))]["t"]) <= PROBE_TTL_HOURS * 3600
+    ) if probe else 0
     print(f"[{label}] вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
           f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
           f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
@@ -363,6 +427,7 @@ def render_subscription(configs, reports, now, out_sub, out_readable, label):
           f"insecure {sum(m['insecure'] for m in masks)}, "
           f"sni-IP {sum(m['ip_sni'] for m in masks)}, "
           f"obfs {sum(m['obfs'] for m in masks)}.")
+    print(f"[{label}] проверка из РФ: проверено {probe_known}, со штрафом {probe_bad}.")
     print(f"[{label}] файл: {out_sub}")
 
 
@@ -372,8 +437,9 @@ def main():
         configs = json.load(f)
 
     reports = load_reports()
+    probe = load_probe()
     now = datetime.now(timezone.utc)
-    sort_key = make_sort_key(reports, now)
+    sort_key = make_sort_key(reports, now, probe)
 
     count = max(1, SUBSCRIPTION_COUNT)
     groups, leftovers = split_pool(configs, sort_key, count)
@@ -383,7 +449,7 @@ def main():
     for i, group in enumerate(groups):
         group = pad_to_ten(group, leftovers)
         out_sub, out_readable = output_paths(i)
-        render_subscription(group, reports, now, out_sub, out_readable, label_for(i))
+        render_subscription(group, reports, now, probe, out_sub, out_readable, label_for(i))
 
 
 if __name__ == "__main__":
