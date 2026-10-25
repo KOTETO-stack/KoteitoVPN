@@ -1,7 +1,7 @@
 """ИИ-советник. Получает только сводную статистику (без ссылок и имён серверов)
 и данные OONI, возвращает JSON с правилами приоритета.
 ИИ не выбирает серверы и не видит ссылки.
-При ошибке присылает причину в Telegram."""
+При ошибке присылает причину в Telegram (код ответа, тип, начало тела)."""
 import base64
 import json
 import os
@@ -17,13 +17,18 @@ from ai_weights import describe, ALLOWED_FIELDS, MAX_WEIGHT
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "output")
 
-# (адрес, список моделей). Пробуем по порядку, пока кто-то не ответит.
-ENDPOINTS = [
-    ("https://models.github.ai/inference/chat/completions",
-     ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"]),
-    ("https://models.inference.ai.azure.com/chat/completions",
-     ["gpt-4o-mini", "gpt-4.1-mini"]),
-]
+URL = "https://models.github.ai/inference/chat/completions"
+MODELS = ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"]
+API_VERSIONS = ["2026-03-10", "2022-11-28"]
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Не идём за редиректами молча: так видно, куда сервер отправляет запрос."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+OPENER = urllib.request.build_opener(NoRedirect)
 
 
 def telegram(text):
@@ -78,7 +83,12 @@ def read_ooni():
         return "нет данных"
 
 
-def ask_model(url, model, payload):
+def short(text, n=120):
+    return re.sub(r"\s+", " ", text or "")[:n]
+
+
+def ask_model(model, api_version, payload):
+    """Возвращает текст ответа модели или бросает RuntimeError с описанием."""
     token = os.environ.get("GITHUB_TOKEN", "")
     system = (
         "Ты советник по приоритету VPN-серверов для пользователей в России. "
@@ -102,25 +112,32 @@ def ask_model(url, model, payload):
     headers = {
         "Authorization": "Bearer " + token,
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": api_version,
     }
-    if "github.ai" in url:
-        headers["Accept"] = "application/vnd.github+json"
-        headers["X-GitHub-Api-Version"] = "2022-11-28"
-    req = urllib.request.Request(url, data=body, headers=headers)
-    with urllib.request.urlopen(req, timeout=90) as r:
-        status = r.status
-        text = r.read().decode("utf-8", "replace")
+    req = urllib.request.Request(URL, data=body, headers=headers)
+    try:
+        with OPENER.open(req, timeout=90) as r:
+            status = r.status
+            ctype = r.headers.get("Content-Type", "")
+            text = r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        try:
+            detail = short(e.read().decode("utf-8", "ignore"))
+        except Exception:
+            detail = ""
+        loc = e.headers.get("Location", "") if e.headers else ""
+        raise RuntimeError("HTTP %s%s %s" % (e.code, (" -> " + loc) if loc else "", detail))
     if not text.strip():
-        raise RuntimeError("пустой ответ, HTTP %s" % status)
+        raise RuntimeError("пустой ответ, HTTP %s, тип %s" % (status, ctype))
     try:
         data = json.loads(text)
     except Exception:
-        raise RuntimeError("не JSON, HTTP %s: %s" % (status, text[:150].replace("\n", " ")))
+        raise RuntimeError("не JSON, HTTP %s, тип %s, тело: %s" % (status, ctype, short(text)))
     try:
         return data["choices"][0]["message"]["content"]
     except Exception:
-        raise RuntimeError("нет choices: " + text[:150].replace("\n", " "))
+        raise RuntimeError("нет choices: " + short(text))
 
 
 def validate(raw, stats):
@@ -165,21 +182,14 @@ def main():
 
     raw = None
     errors = []
-    for url, models in ENDPOINTS:
-        host = url.split("/")[2]
-        for model in models:
+    for model in MODELS:
+        for ver in API_VERSIONS:
             try:
-                raw = ask_model(url, model, payload)
-                print("Модель ответила: %s (%s)" % (model, host))
+                raw = ask_model(model, ver, payload)
+                print("Модель ответила: %s (версия API %s)" % (model, ver))
                 break
-            except urllib.error.HTTPError as e:
-                try:
-                    detail = e.read().decode("utf-8", "ignore")[:150].replace("\n", " ")
-                except Exception:
-                    detail = ""
-                errors.append("%s %s: HTTP %s %s" % (host, model, e.code, detail))
             except Exception as e:
-                errors.append("%s %s: %s" % (host, model, e))
+                errors.append("%s v%s: %s" % (model.split("/")[-1], ver, e))
         if raw is not None:
             break
     if raw is None:
@@ -188,7 +198,7 @@ def main():
 
     advice = validate(raw, stats)
     if advice is None:
-        fail("ответ модели не прошёл проверку: " + raw[:200])
+        fail("ответ модели не прошёл проверку: " + short(raw, 200))
         return
 
     with open(os.path.join(OUT, "ai_advice.json"), "w", encoding="utf-8") as f:
