@@ -11,13 +11,15 @@ build_subscription.py
 
 Как делится пул:
  - все конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных
-   транспортов, TCP-протоколов, подтверждений пользователей, давления блокировок
+   транспортов, trojan, подтверждений пользователей, давления блокировок
    и советов ИИ из output/ai_advice.json);
  - лучшие раздаются по кругу: 1-й в подписку 1, 2-й в подписку 2, и так далее;
  - в каждой подписке не больше MAX_SERVERS серверов и не больше MAX_PER_COUNTRY
    серверов одной страны; конфиг, который не влез по этим лимитам, идёт в
    запасные;
  - серверы с country_code из EXCLUDED_COUNTRIES (Россия) не берутся вообще;
+ - vless без Reality и без TLS не берётся (нестабилен); при ALLOW_VLESS = False
+   vless не берётся совсем;
  - каждая подписка добивается запасными до круглого десятка (101 -> 110), но
    каждый запасной сервер используется только один раз.
 
@@ -58,10 +60,14 @@ OONI_HIGH_PRESSURE_MULTIPLIER = 1.5   # во столько раз усилив�
 MAX_SERVERS = 200                     # максимум серверов в ОДНОЙ подписке
 REALITY_BONUS_MS = 50
 TRANSPORT_BONUS_MS = 20               # для type=xhttp/grpc/ws
-CELLULAR_BONUS_MS = 80                # бонус TCP-протоколам (vless/trojan)
+CELLULAR_BONUS_MS = 80                # бонус протоколам из CELLULAR_PROTOCOLS
+CELLULAR_PROTOCOLS = {"trojan"}       # на LTE проходят trojan и hy2; vless в бонус не входит
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
 MAX_PER_COUNTRY = 20                  # максимум серверов одной страны в ОДНОЙ подписке
 EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России не помогают обходить блокировки РКН
+
+ALLOW_VLESS = True                    # False = vless не берётся совсем
+ALLOW_PLAIN_VLESS = False             # vless без Reality и без TLS не берётся
 
 REPORT_BONUS_MS = 150                 # подтверждённый человеком сервер важнее
 REPORT_TTL_HOURS = 48                 # сколько часов подтверждение актуально
@@ -70,6 +76,7 @@ AI_POINT_MS = 5                       # 1 балл совета ИИ = 5 мс б
 AI_MAX_BONUS_MS = 150                 # потолок влияния ИИ (не выше подтверждения человеком)
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
+SECURITY_RE = re.compile(r"[?&]security=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 
 
 def load_reports():
@@ -128,6 +135,27 @@ def extract_transport(raw: str) -> str:
     return m.group(1).lower() if m else ""
 
 
+def is_plain_vless(c) -> bool:
+    """vless без Reality и без TLS (security=none или параметра нет)."""
+    if c.get("proto") != "vless":
+        return False
+    if c.get("security_tag") == "reality":
+        return False
+    m = SECURITY_RE.search(c.get("raw", ""))
+    security = m.group(1).lower() if m else ""
+    return security not in ("reality", "tls")
+
+
+def vless_allowed(c) -> bool:
+    if c.get("proto") != "vless":
+        return True
+    if not ALLOW_VLESS:
+        return False
+    if not ALLOW_PLAIN_VLESS and is_plain_vless(c):
+        return False
+    return True
+
+
 def make_sort_key(reports, now):
     pressure = load_ooni_pressure()
     high_pressure = pressure is not None and pressure >= OONI_PRESSURE_THRESHOLD
@@ -143,7 +171,7 @@ def make_sort_key(reports, now):
         bonus = reality_bonus if c.get("security_tag") == "reality" else 0
         if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS:
             bonus += TRANSPORT_BONUS_MS
-        if c.get("proto") != "hysteria2":
+        if c.get("proto") in CELLULAR_PROTOCOLS:
             bonus += cellular_bonus
 
         display_name = c.get("display_name") or c.get("remark") or "VPN"
@@ -184,6 +212,11 @@ def split_pool(configs, sort_key, n):
     seen = set()
     pool = []
     candidates = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
+    before = len(candidates)
+    candidates = [c for c in candidates if vless_allowed(c)]
+    if before != len(candidates):
+        print(f"vless отфильтрован: {before - len(candidates)} серверов "
+              f"(ALLOW_VLESS={ALLOW_VLESS}, ALLOW_PLAIN_VLESS={ALLOW_PLAIN_VLESS})")
     for c in sorted(candidates, key=sort_key):
         if c["raw"] in seen:
             continue
