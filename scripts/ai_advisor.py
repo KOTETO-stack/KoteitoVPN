@@ -16,8 +16,14 @@ from ai_weights import describe, ALLOWED_FIELDS, MAX_WEIGHT
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "output")
-MODELS = [m for m in [os.environ.get("AI_MODEL", ""), "openai/gpt-4o-mini", "openai/gpt-4.1-mini"] if m]
-API_URL = "https://models.github.ai/inference/chat/completions"
+
+# (адрес, список моделей). Пробуем по порядку, пока кто-то не ответит.
+ENDPOINTS = [
+    ("https://models.github.ai/inference/chat/completions",
+     ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"]),
+    ("https://models.inference.ai.azure.com/chat/completions",
+     ["gpt-4o-mini", "gpt-4.1-mini"]),
+]
 
 
 def telegram(text):
@@ -72,7 +78,7 @@ def read_ooni():
         return "нет данных"
 
 
-def ask_model(model, payload):
+def ask_model(url, model, payload):
     token = os.environ.get("GITHUB_TOKEN", "")
     system = (
         "Ты советник по приоритету VPN-серверов для пользователей в России. "
@@ -93,14 +99,28 @@ def ask_model(model, payload):
         "temperature": 0.2,
         "max_tokens": 700,
     }).encode()
-    req = urllib.request.Request(API_URL, data=body, headers={
+    headers = {
         "Authorization": "Bearer " + token,
         "Content-Type": "application/json",
-        "Accept": "application/vnd.github+json",
-    })
+        "Accept": "application/json",
+    }
+    if "github.ai" in url:
+        headers["Accept"] = "application/vnd.github+json"
+        headers["X-GitHub-Api-Version"] = "2022-11-28"
+    req = urllib.request.Request(url, data=body, headers=headers)
     with urllib.request.urlopen(req, timeout=90) as r:
-        data = json.loads(r.read().decode())
-    return data["choices"][0]["message"]["content"]
+        status = r.status
+        text = r.read().decode("utf-8", "replace")
+    if not text.strip():
+        raise RuntimeError("пустой ответ, HTTP %s" % status)
+    try:
+        data = json.loads(text)
+    except Exception:
+        raise RuntimeError("не JSON, HTTP %s: %s" % (status, text[:150].replace("\n", " ")))
+    try:
+        return data["choices"][0]["message"]["content"]
+    except Exception:
+        raise RuntimeError("нет choices: " + text[:150].replace("\n", " "))
 
 
 def validate(raw, stats):
@@ -140,24 +160,28 @@ def main():
         "подписка": summarize(links),
         "пул": stats,
         "ooni": read_ooni(),
-        "жалоба": "на сотовой сети (LTE) работают в основном Hysteria2, vless/trojan часто нет",
+        "жалоба": "на сотовой сети (LTE) проходят trojan и hysteria2, vless нестабилен",
     }
 
     raw = None
     errors = []
-    for model in MODELS:
-        try:
-            raw = ask_model(model, payload)
-            print("Модель ответила:", model)
-            break
-        except urllib.error.HTTPError as e:
+    for url, models in ENDPOINTS:
+        host = url.split("/")[2]
+        for model in models:
             try:
-                detail = e.read().decode("utf-8", "ignore")[:200]
-            except Exception:
-                detail = ""
-            errors.append("%s: HTTP %s %s" % (model, e.code, detail))
-        except Exception as e:
-            errors.append("%s: %s" % (model, e))
+                raw = ask_model(url, model, payload)
+                print("Модель ответила: %s (%s)" % (model, host))
+                break
+            except urllib.error.HTTPError as e:
+                try:
+                    detail = e.read().decode("utf-8", "ignore")[:150].replace("\n", " ")
+                except Exception:
+                    detail = ""
+                errors.append("%s %s: HTTP %s %s" % (host, model, e.code, detail))
+            except Exception as e:
+                errors.append("%s %s: %s" % (host, model, e))
+        if raw is not None:
+            break
     if raw is None:
         fail("модель не ответила.\n" + "\n".join(errors))
         return
