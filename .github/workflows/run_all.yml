@@ -1,19 +1,27 @@
-name: Run All (collect -> build)
+name: Run All (collect -> advisor -> build)
 
-# Один запуск вручную: сначала сбор и проверка серверов, потом сборка подписок.
-# Второй шаг стартует только если первый завершился успешно.
+# Один запуск вручную: сбор и проверка серверов, затем ИИ-советчик,
+# затем сборка подписок. Если советчик упадёт, сборка всё равно запустится.
+# Если упадёт сбор, дальше ничего не запускается.
 on:
   workflow_dispatch: {}
 
 permissions:
   contents: write
+  models: read
 
 jobs:
   collect:
     uses: ./.github/workflows/collect_and_test.yml
     secrets: inherit
 
-  build:
+  advise:
     needs: collect
+    uses: ./.github/workflows/ai_advisor.yml
+    secrets: inherit
+
+  build:
+    needs: [collect, advise]
+    if: ${{ !cancelled() && needs.collect.result == 'success' }}
     uses: ./.github/workflows/build_subscription.yml
     secrets: inherit
