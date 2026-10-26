@@ -6,11 +6,14 @@ import os
 import socket
 import time
 import urllib.request
+from collections import Counter
 
 IN_FILE = os.path.join(os.path.dirname(__file__), "..", "dns_checked_configs.json")
 OUT_FILE = os.path.join(os.path.dirname(__file__), "..", "geo_configs.json")
+ASN_FILE = os.path.join(os.path.dirname(__file__), "..", "output", "asn_info.json")
 
-BATCH_URL = "http://ip-api.com/batch?lang=ru&fields=status,countryCode,country,city,query"
+BATCH_URL = ("http://ip-api.com/batch?lang=ru"
+             "&fields=status,countryCode,country,city,query,as,asname,isp,hosting")
 BATCH_SIZE = 100
 RATE_SLEEP_SEC = 4.2
 EXCLUDED_COUNTRY_CODES = {"UA"}
@@ -51,15 +54,34 @@ def geo_lookup_fallback(ip):
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         if not data.get("success", True) is False and data.get("country_code"):
+            conn = data.get("connection") or {}
+            asn = conn.get("asn")
+            org = (conn.get("org") or "").strip()
             return {
                 "status": "success",
                 "countryCode": data.get("country_code", ""),
                 "country": data.get("country", ""),
                 "city": data.get("city", ""),
+                "as": ("AS%s %s" % (asn, org)).strip() if asn else "",
+                "asname": org,
+                "isp": (conn.get("isp") or "").strip(),
             }
     except Exception as e:
         print(f"[fallback geo error] {ip} -> {e}")
     return None
+
+
+def net_fields(g):
+    """Сеть сервера из ответа гео-сервиса: ASN, название, провайдер, датацентр."""
+    as_str = (g.get("as") or "").strip()
+    asn = as_str.split()[0] if as_str.upper().startswith("AS") else ""
+    name = (g.get("asname") or "").strip() or " ".join(as_str.split()[1:])
+    return {
+        "asn": asn,
+        "name": name,
+        "isp": (g.get("isp") or "").strip(),
+        "hosting": bool(g.get("hosting")),
+    }
 
 
 def main():
@@ -96,12 +118,45 @@ def main():
             entry["country_code"] = cc
             parts = [p for p in [entry["flag"], entry["country_ru"], entry["city_ru"]] if p]
             entry["display_name"] = " ".join(parts)
+            nf = net_fields(g)
+            entry["net_ip"] = entry["_ip"]
+            entry["net_asn"] = nf["asn"]
+            entry["net_name"] = nf["name"]
+            entry["net_isp"] = nf["isp"]
+            entry["net_hosting"] = nf["hosting"]
             results.append(entry)
 
         if i + BATCH_SIZE < len(resolvable):
             time.sleep(RATE_SLEEP_SEC)
 
     print(f"С определённой страной (без Украины): {len(results)}")
+
+    # Сети серверов: файл для следующего шага и сводка в лог.
+    info = {}
+    for e in results:
+        host = str(e.get("host", "")).strip().lower()
+        if not host:
+            continue
+        info[host] = {
+            "ip": e.get("net_ip", ""),
+            "asn": e.get("net_asn", ""),
+            "name": e.get("net_name", ""),
+            "isp": e.get("net_isp", ""),
+            "hosting": bool(e.get("net_hosting")),
+        }
+    try:
+        os.makedirs(os.path.dirname(ASN_FILE), exist_ok=True)
+        with open(ASN_FILE, "w", encoding="utf-8") as f:
+            json.dump(info, f, ensure_ascii=False, indent=1)
+    except OSError as e:
+        print(f"[asn] файл не записан: {e}")
+
+    known = sum(1 for e in results if e.get("net_asn"))
+    hosting = sum(1 for e in results if e.get("net_hosting"))
+    print(f"Сети (ASN): определено у {known} из {len(results)}, из них датацентров: {hosting}.")
+    cnt = Counter((e.get("net_asn") or "?", e.get("net_name") or "") for e in results)
+    for (asn, name), n in cnt.most_common(15):
+        print(f"  {asn} {name}: {n}")
 
     with open(OUT_FILE, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
