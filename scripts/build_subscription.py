@@ -15,16 +15,16 @@ build_subscription.py
    штраф за недоступность из РФ по output/ru_probe.json);
  - лучшие раздаются по кругу;
  - в подписке не больше MAX_SERVERS серверов и MAX_PER_COUNTRY на страну;
- - серверы из EXCLUDED_COUNTRIES (Россия) не берутся из основного пула;
+ - серверы из EXCLUDED_COUNTRIES (Россия) в основной пул не берутся;
  - vless без Reality и TLS не берётся;
  - подписка добивается запасными до круглого десятка (каждый запасной один раз).
 
-Мобильный список (MOBILE_QUOTA серверов в КАЖДУЮ подписку):
- - берётся прямо во время сборки из файлов igareck/vpn-configs-for-russia (GPL-3.0);
- - отдельной подписки и отдельного файла нет;
- - названия серверов не меняются (как в источнике);
- - российские серверы не исключаются;
- - берутся только те, чей порт отвечает с раннера;
+Мобильная добавка (MOBILE_QUOTA серверов в КАЖДУЮ подписку), из НАШЕГО пула:
+ - сначала серверы из России (MOBILE_COUNTRIES), которых нет в основной выдаче:
+   лучшие по проверке из РФ (ru_probe.json), затем без данных проверки;
+ - затем зарубежные серверы, которые ответили из РФ не менее чем у доли
+   MOBILE_MIN_PROBE узлов;
+ - названия не меняются, отдельной подписки нет;
  - без повторов между подписками и с уже вошедшими серверами;
  - MOBILE_QUOTA = 0 выключает добавку.
 
@@ -36,12 +36,9 @@ import ipaddress
 import json
 import os
 import re
-import socket
 import sys
 import time
 import urllib.parse
-import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -73,7 +70,7 @@ CELLULAR_BONUS_MS = 80                # бонус протоколам из CEL
 CELLULAR_PROTOCOLS = set()            # пусто: на LTE дело в серверах, а не в протоколе
 STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
 MAX_PER_COUNTRY = 12                  # максимум серверов одной страны в ОДНОЙ подписке
-EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России не берём из основного пула
+EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России не берём в основной пул
 
 ALLOW_VLESS = True                    # False = vless не берётся совсем
 ALLOW_PLAIN_VLESS = False             # vless без Reality и без TLS не берётся
@@ -90,23 +87,14 @@ MASK_MAX_BONUS_MS = 40                # потолок влияния оценк
 PROBE_PENALTY_MS = 100                # максимальный штраф за недоступность из РФ (0 = выключено)
 PROBE_TTL_HOURS = 48                  # старше этого результат проверки не учитывается
 
-MOBILE_QUOTA = 40                     # серверов из мобильного списка в КАЖДУЮ подписку (0 = выключено)
-MOBILE_RAW = "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/"
-MOBILE_SOURCES = [
-    "BLACK_VLESS_RUS_mobile.txt",
-    "Vless-Reality-White-Lists-Rus-Mobile.txt",
-    "Vless-Reality-White-Lists-Rus-Mobile-2.txt",
-    "WHITE-CIDR-RU-checked.txt",
-]
-MOBILE_CHECK_LIMIT = 400              # сколько серверов из мобильного списка проверить по порту
-MOBILE_TCP_TIMEOUT = 3                # секунд на проверку порта
-MOBILE_WORKERS = 40
+MOBILE_QUOTA = 40                     # серверов мобильной добавки в КАЖДУЮ подписку (0 = выключено)
+MOBILE_COUNTRIES = {"RU"}             # страны, которые берём ТОЛЬКО для мобильной добавки
+MOBILE_MIN_PROBE = 0.5                # доля российских узлов, ответивших серверу (для проверенных)
 
 HY2_SCHEMES = {"hysteria2", "hy2"}
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 SECURITY_RE = re.compile(r"[?&]security=([a-zA-Z0-9_-]+)", re.IGNORECASE)
-LINK_RE = re.compile(r"(?:vless|trojan)://[^\s<>\"']+", re.IGNORECASE)
 
 
 def load_reports():
@@ -121,7 +109,7 @@ def load_reports():
 
 def load_probe():
     """Читает output/ru_probe.json (результаты проверки с российских узлов)."""
-    if PROBE_PENALTY_MS <= 0 or not os.path.exists(PROBE_FILE):
+    if (PROBE_PENALTY_MS <= 0 and MOBILE_QUOTA <= 0) or not os.path.exists(PROBE_FILE):
         return {}
     try:
         with open(PROBE_FILE, "r", encoding="utf-8") as f:
@@ -129,109 +117,6 @@ def load_probe():
         return data if isinstance(data, dict) else {}
     except (json.JSONDecodeError, OSError):
         return {}
-
-
-def interleave(lists):
-    """По очереди берёт по одному элементу из каждого списка."""
-    out, idx = [], 0
-    while any(idx < len(l) for l in lists):
-        for l in lists:
-            if idx < len(l):
-                out.append(l[idx])
-        idx += 1
-    return out
-
-
-def fetch_mobile_text(name):
-    url = MOBILE_RAW + urllib.parse.quote(name)
-    req = urllib.request.Request(url, headers={"User-Agent": "KoteitoVPN/1.0"})
-    with urllib.request.urlopen(req, timeout=40) as r:
-        text = r.read().decode("utf-8", "replace")
-    if "://" not in text:
-        raw = text.strip()
-        try:
-            text = base64.b64decode(raw + "=" * (-len(raw) % 4)).decode("utf-8", "ignore")
-        except Exception:
-            pass
-    return text
-
-
-def parse_mobile_links(text):
-    """vless только с Reality/TLS и trojan. Возвращает список словарей."""
-    out = []
-    for m in LINK_RE.findall(text):
-        base, _, frag = m.partition("#")
-        try:
-            u = urllib.parse.urlparse(base)
-            host, port = u.hostname, u.port
-        except ValueError:
-            continue
-        if not host or not port:
-            continue
-        scheme = u.scheme.lower()
-        reality = False
-        if scheme == "vless":
-            q = {k.lower(): v for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)}
-            security = (q.get("security", "") or "").lower()
-            if security not in ("reality", "tls"):
-                continue
-            reality = security == "reality"
-        out.append({"base": base, "host": host, "port": port, "scheme": scheme,
-                    "reality": reality, "name": urllib.parse.unquote(frag).strip()})
-    return out
-
-
-def tcp_ok(host, port):
-    try:
-        with socket.create_connection((host, port), timeout=MOBILE_TCP_TIMEOUT):
-            return True
-    except Exception:
-        return False
-
-
-def load_mobile_pool():
-    """Качает мобильные списки igareck, проверяет порты и возвращает серверы
-    в формате пула. Названия не меняются. Нет ответа от источника: пропускается."""
-    if MOBILE_QUOTA <= 0:
-        return []
-    lists, seen = [], set()
-    for name in MOBILE_SOURCES:
-        try:
-            text = fetch_mobile_text(name)
-        except Exception as e:
-            print(f"Мобильный источник {name} недоступен: {e}")
-            lists.append([])
-            continue
-        items = []
-        for it in parse_mobile_links(text):
-            if it["base"] in seen:
-                continue
-            seen.add(it["base"])
-            items.append(it)
-        lists.append(items)
-        print(f"Мобильный источник {name}: найдено {len(items)}")
-
-    ordered = interleave(lists)[:MOBILE_CHECK_LIMIT]
-    if not ordered:
-        return []
-    with ThreadPoolExecutor(MOBILE_WORKERS) as ex:
-        checks = list(ex.map(lambda it: tcp_ok(it["host"], it["port"]), ordered))
-    reachable = [it for it, ok in zip(ordered, checks) if ok]
-    print(f"Мобильный список: проверено {len(ordered)}, порт отвечает у {len(reachable)}")
-
-    pool = []
-    for it in reachable:
-        display = it["name"] or it["host"]
-        pool.append({
-            "raw": it["base"],
-            "proto": it["scheme"],
-            "security_tag": "reality" if it["reality"] else "",
-            "country_code": "MOB",
-            "display_name": display,
-            "ping_ms": 9999,
-            "mobile": True,
-        })
-    return pool
 
 
 def is_confirmed(display_name, reports, now):
@@ -367,24 +252,35 @@ def probe_key(raw: str):
         return None
 
 
-def probe_penalty_ms(c, probe, now_ts) -> float:
-    """Штраф за недоступность из РФ: доля не ответивших узлов * PROBE_PENALTY_MS."""
-    if PROBE_PENALTY_MS <= 0 or not probe:
-        return 0
+def probe_ratio(c, probe, now_ts):
+    """Доля российских узлов, у которых сервер ответил (0..1).
+    None: нет данных, данные старые или это Hy2."""
+    if not probe:
+        return None
     key = probe_key(c.get("raw", ""))
     entry = probe.get(key) if key else None
     if not entry:
-        return 0
+        return None
     try:
         if now_ts - float(entry.get("t", 0)) > PROBE_TTL_HOURS * 3600:
-            return 0
+            return None
         total = int(entry.get("total", 0))
         ok = int(entry.get("ok", 0))
     except (TypeError, ValueError):
-        return 0
+        return None
     if total <= 0:
+        return None
+    return ok / float(total)
+
+
+def probe_penalty_ms(c, probe, now_ts) -> float:
+    """Штраф за недоступность из РФ: доля не ответивших узлов * PROBE_PENALTY_MS."""
+    if PROBE_PENALTY_MS <= 0:
         return 0
-    return PROBE_PENALTY_MS * (1.0 - ok / float(total))
+    ratio = probe_ratio(c, probe, now_ts)
+    if ratio is None:
+        return 0
+    return PROBE_PENALTY_MS * (1.0 - ratio)
 
 
 def make_sort_key(reports, now, probe):
@@ -489,8 +385,49 @@ def pad_to_ten(group, leftovers):
     return group
 
 
+def pick_mobile(configs, groups, sort_key, probe):
+    """Выбирает кандидатов мобильной добавки из нашего же пула.
+    Порядок: серверы из MOBILE_COUNTRIES (лучшие по проверке из РФ, потом без
+    данных), затем зарубежные, ответившие из РФ не менее чем у MOBILE_MIN_PROBE.
+    Серверы, уже вошедшие в подписки, пропускаются."""
+    now_ts = time.time()
+    seen = {c["raw"].split("#", 1)[0] for g in groups for c in g}
+    cands = []
+    ru_total = ru_probed = foreign_ok = 0
+    for c in configs:
+        base = c.get("raw", "").split("#", 1)[0]
+        if not base or base in seen or not vless_allowed(c):
+            continue
+        seen.add(base)
+        ratio = probe_ratio(c, probe, now_ts)
+        is_mob_country = c.get("country_code", "??") in MOBILE_COUNTRIES
+        if is_mob_country:
+            ru_total += 1
+            if ratio is not None:
+                ru_probed += 1
+                if ratio < MOBILE_MIN_PROBE:
+                    continue
+        else:
+            if ratio is None or ratio < MOBILE_MIN_PROBE:
+                continue
+            foreign_ok += 1
+        cands.append((0 if is_mob_country else 1,
+                      -(ratio if ratio is not None else 0.0),
+                      sort_key(c), c))
+    cands.sort(key=lambda t: t[:3])
+    print(f"Мобильная добавка: серверов из {sorted(MOBILE_COUNTRIES)} в пуле {ru_total} "
+          f"(с проверкой из РФ {ru_probed}), зарубежных с ответом из РФ {foreign_ok}, "
+          f"кандидатов {len(cands)}.")
+    out = []
+    for t in cands:
+        item = dict(t[3])
+        item["mobile"] = True
+        out.append(item)
+    return out
+
+
 def add_mobile(groups, mobile):
-    """Добавляет в каждую подписку до MOBILE_QUOTA серверов из мобильного списка
+    """Добавляет в каждую подписку до MOBILE_QUOTA серверов мобильной добавки
     по кругу, без повторов между подписками и с уже вошедшими серверами."""
     if not mobile or not groups:
         return 0
@@ -548,6 +485,7 @@ def render_subscription(configs, reports, now, probe, out_sub, out_readable, lab
         if is_confirmed(c.get("display_name") or c.get("remark") or "VPN", reports, now)
     )
     mobile_count = sum(1 for c in configs if c.get("mobile"))
+    mobile_ru = sum(1 for c in configs if c.get("mobile") and c.get("country_code") in MOBILE_COUNTRIES)
     countries_count = len({c.get("country_code", "??") for c in configs if not c.get("mobile")})
     masks = [mask_info(c) for c in configs]
     print(f"[{label}] вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
@@ -555,7 +493,7 @@ def render_subscription(configs, reports, now, probe, out_sub, out_readable, lab
           f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
           f"подтверждено пользователями: {confirmed_count}, "
           f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
-    print(f"[{label}] из мобильного списка: {mobile_count}.")
+    print(f"[{label}] мобильная добавка: {mobile_count} (из России: {mobile_ru}).")
     print(f"[{label}] маскировка: vision {sum(m['vision'] for m in masks)}, "
           f"insecure {sum(m['insecure'] for m in masks)}, "
           f"sni-IP {sum(m['ip_sni'] for m in masks)}, "
@@ -581,9 +519,9 @@ def main():
     groups = [pad_to_ten(g, leftovers) for g in groups]
 
     if MOBILE_QUOTA > 0:
-        mobile = load_mobile_pool()
+        mobile = pick_mobile(configs, groups, sort_key, probe)
         added = add_mobile(groups, mobile)
-        print(f"Мобильный список: добавлено в подписки {added} (квота {MOBILE_QUOTA} на подписку).")
+        print(f"Мобильная добавка: добавлено в подписки {added} (квота {MOBILE_QUOTA} на подписку).")
 
     for i, group in enumerate(groups):
         out_sub, out_readable = output_paths(i)
