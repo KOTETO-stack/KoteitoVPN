@@ -26,6 +26,8 @@ build_subscription.py
    MOBILE_MIN_PROBE узлов;
  - названия не меняются, отдельной подписки нет;
  - без повторов между подписками и с уже вошедшими серверами;
+ - список добавленных серверов пишется в output/subscription_mobile_list.txt
+   (только для просмотра, без ссылок);
  - MOBILE_QUOTA = 0 выключает добавку.
 
 Если для подписки серверов нет, её файл не перезаписывается.
@@ -54,6 +56,7 @@ OUT_SUB = os.path.join(OUT_DIR, "subscription.txt")
 OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
 OUT_SUB_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular.txt")
 OUT_READABLE_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular_readable.txt")
+OUT_MOBILE_LIST = os.path.join(OUT_DIR, "subscription_mobile_list.txt")
 REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 OONI_INDEX_FILE = os.path.join(OUT_DIR, "ooni_censorship_index.json")
 PROBE_FILE = os.path.join(OUT_DIR, "ru_probe.json")
@@ -454,6 +457,35 @@ def add_mobile(groups, mobile):
     return added
 
 
+def write_mobile_list(groups, probe):
+    """Пишет output/subscription_mobile_list.txt: список серверов мобильной
+    добавки для просмотра. Это не подписка, ссылок в файле нет."""
+    now_ts = time.time()
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    lines = ["# Мобильная добавка, обновлено %s" % stamp,
+             "# Это НЕ подписка, ссылок здесь нет. Только для просмотра.",
+             "# Формат: название | протокол | страна | ответ российских узлов (ru_probe)"]
+    total = 0
+    for i, g in enumerate(groups):
+        items = [c for c in g if c.get("mobile")]
+        total += len(items)
+        lines.append("")
+        lines.append("== %s: %d ==" % (label_for(i), len(items)))
+        for c in items:
+            ratio = probe_ratio(c, probe, now_ts)
+            answer = "нет данных" if ratio is None else "%d%%" % round(ratio * 100)
+            name = c.get("display_name") or c.get("remark") or "VPN"
+            lines.append("%s | %s | %s | %s" % (
+                name, c.get("proto", "?"), c.get("country_code", "??"), answer))
+    lines.insert(3, "# Всего серверов: %d" % total)
+    try:
+        with open(OUT_MOBILE_LIST, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        print(f"Список мобильной добавки записан: {OUT_MOBILE_LIST} ({total} серверов)")
+    except OSError as e:
+        print(f"Список мобильной добавки не записан: {e}")
+
+
 def render_subscription(configs, reports, now, probe, out_sub, out_readable, label):
     if not configs:
         print(f"[{label}] серверов нет, файл не перезаписан, остаётся прошлая версия")
@@ -522,6 +554,7 @@ def main():
         mobile = pick_mobile(configs, groups, sort_key, probe)
         added = add_mobile(groups, mobile)
         print(f"Мобильная добавка: добавлено в подписки {added} (квота {MOBILE_QUOTA} на подписку).")
+        write_mobile_list(groups, probe)
 
     for i, group in enumerate(groups):
         out_sub, out_readable = output_paths(i)
