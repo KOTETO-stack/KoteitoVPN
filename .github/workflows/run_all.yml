@@ -1,8 +1,9 @@
-name: Run All (collect -> advisor -> build)
+name: Run All (collect -> RU probe -> advisor -> build)
 
-# Один запуск вручную: сбор и проверка серверов, затем ИИ-советчик,
-# затем сборка подписок. Если советчик упадёт, сборка всё равно запустится.
-# Если упадёт сбор, дальше ничего не запускается.
+# Один запуск вручную: сбор и проверка серверов, проверка из РФ,
+# ИИ-советчик, затем сборка подписок.
+# Проверка из РФ и советчик не блокируют сборку: если они упадут,
+# сборка всё равно запустится. Если упадёт сбор, дальше ничего не идёт.
 on:
   workflow_dispatch: {}
 
@@ -15,13 +16,20 @@ jobs:
     uses: ./.github/workflows/collect_and_test.yml
     secrets: inherit
 
-  advise:
+  probe:
     needs: collect
+    if: ${{ !cancelled() && needs.collect.result == 'success' }}
+    uses: ./.github/workflows/ru_probe.yml
+    secrets: inherit
+
+  advise:
+    needs: [collect, probe]
+    if: ${{ !cancelled() && needs.collect.result == 'success' }}
     uses: ./.github/workflows/ai_advisor.yml
     secrets: inherit
 
   build:
-    needs: [collect, advise]
+    needs: [collect, probe, advise]
     if: ${{ !cancelled() && needs.collect.result == 'success' }}
     uses: ./.github/workflows/build_subscription.yml
     secrets: inherit
