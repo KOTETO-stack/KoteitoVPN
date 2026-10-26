@@ -18,6 +18,7 @@
 
 
 
+
 https://github.com/Argh94/Proxy-List/raw/refs/heads/main/All_Config.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_001.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_002.txt
@@ -143,6 +144,7 @@ https://raw.githubusercontent.com/ndsphonemy/proxy-sub/main/speed.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/Sub1.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/Sub6.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/Sub7.txt
+https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/Sub8.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/configs/proxy_configs.txt
 https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/configs/proxy_configs_tested.txt
 https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list.txt
