@@ -3,7 +3,11 @@
 """
 ping_test.py
 
-Версия 5.3 — реальная проверка: трафик реально пропускается через сервер.
+Версия 5.4 — реальная проверка: трафик реально пропускается через сервер.
+5.4: этап 1 устойчивее: "пинг" (ping_ms) теперь время TCP-connect (одна поездка туда-обратно),
+     а не connect + TLS-хендшейк (три поездки), у хендшейка отдельный таймаут
+     (HANDSHAKE_TIMEOUT); для небольших пулов (до RETRY_MAX_POOL) не ответившие
+     сервера проверяются ещё раз; в лог выводится разбивка причин отсева.
 5.3: накопительная история (файл server_history.json, в Actions хранится в кэше):
      серверы, которые уже проходили тест, проверяются в первую очередь в каждом запуске,
      остаются в пуле, пока не провалят HISTORY_MAX_FAILS проверок подряд, и им прощается
@@ -15,7 +19,7 @@ ping_test.py
 Этап 1 (быстрый отсев):
  - vless/trojan: TCP-connect + TLS-хендшейк на SNI из конфига;
  - hysteria2: UDP-проб порта.
- Всё, что дороже MAX_PING_MS, отбрасывается.
+ Всё, у чего TCP-connect дороже MAX_PING_MS, отбрасывается.
 
 Этап 2 (главный):
  - каждый оставшийся конфиг превращается в outbound для sing-box (то же ядро,
@@ -56,6 +60,7 @@ import ssl
 import struct
 import subprocess
 import tempfile
+import threading
 import time
 import urllib.parse
 
@@ -64,10 +69,13 @@ IN_FILE = os.path.join(BASE_DIR, "..", "clean_configs.json")
 OUT_FILE = os.path.join(BASE_DIR, "..", "pinged_configs.json")
 
 # ---------- этап 1: быстрый отсев ----------
-MAX_PING_MS = 500
-CONNECT_TIMEOUT = 2.5
+MAX_PING_MS = 500           # порог для TCP-connect (одна поездка туда-обратно)
+CONNECT_TIMEOUT = 3.0       # таймаут TCP-connect
+HANDSHAKE_TIMEOUT = 4.0     # таймаут TLS-хендшейка (после connect), отдельно
 UDP_PROBE_TIMEOUT = 1.5
 WORKERS = 40
+STAGE1_RETRIES = 1          # повторов для не ответивших (таймаут, срыв хендшейка)
+RETRY_MAX_POOL = 1500       # повторы только если конфигов не больше (чтобы не тянуть время)
 
 # ---------- этап 2: реальный тест через sing-box ----------
 REAL_TEST_ENABLED = os.environ.get("REAL_TEST", "1") != "0"
@@ -107,6 +115,11 @@ VALID_FP = {"chrome", "firefox", "edge", "safari", "360", "qq", "ios", "android"
 UNSUPPORTED = Counter()
 TESTED_KEYS = set()   # host:port конфигов, которые реально прошли через sing-box в этом запуске
 
+# причины, по которым конфиг не прошёл этап 1 (для лога)
+STAGE1_FAILS = Counter()
+_STAGE1_LOCK = threading.Lock()
+STAGE1_ACTIVE_RETRIES = 0   # выставляется в main() в зависимости от размера пула
+
 
 def skip(reason):
     UNSUPPORTED[reason] += 1
@@ -114,7 +127,7 @@ def skip(reason):
 
 
 # =====================================================================
-#                          ЭТАП 1 (как в v4)
+#                          ЭТАП 1
 # =====================================================================
 def extract_sni(raw, fallback_host):
     """Достаёт sni (или host) параметр из самого конфига."""
@@ -130,16 +143,23 @@ def extract_sni(raw, fallback_host):
         return fallback_host
 
 
-def tcp_or_tls_ping(entry):
-    """TCP-connect для всех; для vless/trojan с TLS/Reality — ещё и TLS-хендшейк."""
+def tcp_or_tls_probe(entry):
+    """TCP-connect для всех; для vless/trojan с TLS/Reality — ещё и TLS-хендшейк.
+    Возвращает (ms, причина): ms — время TCP-connect, None — не прошёл."""
     host, port = entry["host"], entry["port"]
-    start = time.perf_counter()
     sock = None
     try:
+        t0 = time.perf_counter()
         sock = socket.create_connection((host, port), timeout=CONNECT_TIMEOUT)
+        connect_ms = int((time.perf_counter() - t0) * 1000)
+    except socket.timeout:
+        return None, "connect: таймаут"
+    except OSError:
+        return None, "connect: ошибка"
+    try:
         needs_tls = entry.get("proto") in ("vless", "trojan") and entry.get("security_tag") in ("tls", "reality")
         if needs_tls:
-            sock.settimeout(CONNECT_TIMEOUT)
+            sock.settimeout(HANDSHAKE_TIMEOUT)
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
@@ -148,14 +168,18 @@ def tcp_or_tls_ping(entry):
             tls_sock.close()
         else:
             sock.close()
-        return int((time.perf_counter() - start) * 1000)
+        return connect_ms, "ok"
     except Exception:
-        if sock:
-            try:
-                sock.close()
-            except Exception:
-                pass
-        return None
+        try:
+            sock.close()
+        except Exception:
+            pass
+        return None, "TLS-хендшейк не прошёл"
+
+
+def tcp_or_tls_ping(entry):
+    """Совместимость со старым именем: только миллисекунды (или None)."""
+    return tcp_or_tls_probe(entry)[0]
 
 
 def udp_probe(host, port):
@@ -182,12 +206,29 @@ def udp_probe(host, port):
             s.close()
 
 
+def _count_fail(reason):
+    with _STAGE1_LOCK:
+        STAGE1_FAILS[reason] += 1
+
+
 def quick_check(entry):
-    if entry.get("proto") == "hysteria2":
-        ms = udp_probe(entry["host"], entry["port"])
-    else:
-        ms = tcp_or_tls_ping(entry)
-    if ms is None or ms > MAX_PING_MS:
+    is_hy2 = entry.get("proto") == "hysteria2"
+    ms, reason = None, "нет ответа"
+    for _attempt in range(1 + STAGE1_ACTIVE_RETRIES):
+        if is_hy2:
+            ms = udp_probe(entry["host"], entry["port"])
+            reason = "hy2: порт закрыт" if ms is None else "ok"
+        else:
+            ms, reason = tcp_or_tls_probe(entry)
+        if ms is not None:
+            break
+        if reason == "connect: ошибка":
+            break  # отказ в соединении или нет DNS: повтор не поможет
+    if ms is None:
+        _count_fail(reason)
+        return None
+    if ms > MAX_PING_MS:
+        _count_fail("слишком медленно (> %d мс)" % MAX_PING_MS)
         return None
     entry["ping_ms"] = ms
     return entry
@@ -693,6 +734,8 @@ def pick_candidates(quick, hist_keys=frozenset()):
 
 # =====================================================================
 def main():
+    global STAGE1_ACTIVE_RETRIES
+
     with open(IN_FILE, "r", encoding="utf-8") as f:
         configs = json.load(f)
 
@@ -703,7 +746,10 @@ def main():
         configs, hist_keys, n_injected = inject_history(configs, history)
         print("История: записей %d, из них добавлено в проверку %d" % (len(history), n_injected))
 
-    print("Этап 1: быстрый отсев %d серверов (порог %d мс)..." % (len(configs), MAX_PING_MS))
+    STAGE1_ACTIVE_RETRIES = STAGE1_RETRIES if len(configs) <= RETRY_MAX_POOL else 0
+
+    print("Этап 1: быстрый отсев %d серверов (порог %d мс, повторов %d)..."
+          % (len(configs), MAX_PING_MS, STAGE1_ACTIVE_RETRIES))
     quick = []
     with cf.ThreadPoolExecutor(max_workers=WORKERS) as ex:
         for res in ex.map(quick_check, configs):
@@ -711,6 +757,8 @@ def main():
                 quick.append(res)
     quick.sort(key=lambda e: e["ping_ms"])
     print("Этап 1 пройден: %d из %d" % (len(quick), len(configs)))
+    for reason, n in STAGE1_FAILS.most_common():
+        print("  этап 1, не прошли: %s — %d" % (reason, n))
     if use_history:
         note_stage1_failures(history, hist_keys, quick)
 
