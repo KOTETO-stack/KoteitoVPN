@@ -30,6 +30,13 @@ build_subscription.py
    (только для просмотра, без ссылок);
  - MOBILE_QUOTA = 0 выключает добавку.
 
+Защита от просадки (SHRINK_GUARD): если новая подписка меньше доли SHRINK_GUARD
+от прошлой версии файла, она НЕ перезаписывается (сборка с плохой проверкой
+не должна портить подписки). SHRINK_GUARD = 0 выключает защиту.
+
+ASN-карта: после записи подписок в лог выводится сворачиваемый блок
+"название | протокол | адрес | сеть" (по output/asn_info.json от geo_flag.py).
+
 Если для подписки серверов нет, её файл не перезаписывается.
 Результат кодируется в base64 (формат Karing/Hiddyfi/v2rayNG).
 """
@@ -60,6 +67,7 @@ OUT_MOBILE_LIST = os.path.join(OUT_DIR, "subscription_mobile_list.txt")
 REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 OONI_INDEX_FILE = os.path.join(OUT_DIR, "ooni_censorship_index.json")
 PROBE_FILE = os.path.join(OUT_DIR, "ru_probe.json")
+ASN_FILE = os.path.join(OUT_DIR, "asn_info.json")
 
 SUBSCRIPTION_COUNT = 2                # на сколько подписок делить пул (2 и больше)
 
@@ -94,6 +102,9 @@ MOBILE_QUOTA = 40                     # серверов мобильной до
 MOBILE_COUNTRIES = {"RU"}             # страны, которые берём ТОЛЬКО для мобильной добавки
 MOBILE_MIN_PROBE = 0.5                # доля российских узлов, ответивших серверу (для проверенных)
 
+SHRINK_GUARD = 0.6                    # новая подписка меньше этой доли прошлой: файл не перезаписывается (0 = выключено)
+SHRINK_GUARD_MIN_OLD = 20             # защита работает, если в прошлой версии было не меньше стольких серверов
+
 HY2_SCHEMES = {"hysteria2", "hy2"}
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
@@ -120,6 +131,27 @@ def load_probe():
         return data if isinstance(data, dict) else {}
     except (json.JSONDecodeError, OSError):
         return {}
+
+
+def load_asn():
+    """Читает output/asn_info.json (хост -> сеть), его пишет geo_flag.py."""
+    if not os.path.exists(ASN_FILE):
+        return {}
+    try:
+        with open(ASN_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def count_servers(path):
+    """Сколько серверов (строк со ссылкой) в текстовом файле подписки."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return sum(1 for line in f if "://" in line)
+    except OSError:
+        return 0
 
 
 def is_confirmed(display_name, reports, now):
@@ -486,10 +518,46 @@ def write_mobile_list(groups, probe):
         print(f"Список мобильной добавки не записан: {e}")
 
 
+def print_asn_map(written, asn):
+    """Выводит в лог сворачиваемый блок: название | протокол | адрес | сеть.
+    written: список (индекс подписки, список серверов) только для записанных подписок."""
+    if not written:
+        return
+    if not asn:
+        print("ASN-карта: файла output/asn_info.json нет (geo_flag.py ещё не обновлён?)")
+        return
+    print("::group::ASN-карта подписок (название | протокол | адрес | сеть)")
+    for i, group in written:
+        print("== %s ==" % label_for(i))
+        for c in group:
+            try:
+                u = urllib.parse.urlparse(c.get("raw", ""))
+                host = (u.hostname or "").lower()
+                port = u.port
+            except ValueError:
+                host, port = "", None
+            info = asn.get(host) or {}
+            name = c.get("display_name") or c.get("remark") or "VPN"
+            mark = " [моб]" if c.get("mobile") else ""
+            dc = " DC" if info.get("hosting") else ""
+            print("%s%s | %s | %s:%s | %s %s%s" % (
+                name, mark, c.get("proto", "?"), host, port,
+                info.get("asn", "?"), info.get("name", ""), dc))
+    print("::endgroup::")
+
+
 def render_subscription(configs, reports, now, probe, out_sub, out_readable, label):
+    """Записывает подписку. Возвращает True, если файлы записаны."""
     if not configs:
         print(f"[{label}] серверов нет, файл не перезаписан, остаётся прошлая версия")
-        return
+        return False
+
+    if SHRINK_GUARD > 0:
+        old_n = count_servers(out_readable)
+        if old_n >= SHRINK_GUARD_MIN_OLD and len(configs) < SHRINK_GUARD * old_n:
+            print(f"[{label}] ЗАЩИТА: новых серверов {len(configs)} против {old_n} в прошлой версии "
+                  f"(меньше {int(SHRINK_GUARD * 100)}%), файл НЕ перезаписан, остаётся прошлая версия")
+            return False
 
     final_lines = []
     for c in configs:
@@ -531,6 +599,7 @@ def render_subscription(configs, reports, now, probe, out_sub, out_readable, lab
           f"sni-IP {sum(m['ip_sni'] for m in masks)}, "
           f"obfs {sum(m['obfs'] for m in masks)}.")
     print(f"[{label}] файл: {out_sub}")
+    return True
 
 
 def main():
@@ -556,9 +625,13 @@ def main():
         print(f"Мобильная добавка: добавлено в подписки {added} (квота {MOBILE_QUOTA} на подписку).")
         write_mobile_list(groups, probe)
 
+    written = []
     for i, group in enumerate(groups):
         out_sub, out_readable = output_paths(i)
-        render_subscription(group, reports, now, probe, out_sub, out_readable, label_for(i))
+        if render_subscription(group, reports, now, probe, out_sub, out_readable, label_for(i)):
+            written.append((i, group))
+
+    print_asn_map(written, load_asn())
 
 
 if __name__ == "__main__":
