@@ -2,10 +2,10 @@
   "country": "RU",
   "test_name": "web_connectivity",
   "pressure_percent": 30.7,
-  "measurements": 669997,
-  "anomaly": 173431,
-  "confirmed": 32128,
+  "measurements": 723978,
+  "anomaly": 187164,
+  "confirmed": 35360,
   "since": "2026-10-24",
   "until": "2026-10-28",
-  "updated_utc": "2026-10-27T05:09:04+00:00"
+  "updated_utc": "2026-10-27T10:37:17+00:00"
 }
