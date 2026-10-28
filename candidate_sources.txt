@@ -67,12 +67,12 @@
 
 
 
+
 https://raw.githubusercontent.com/Danialsamadi/v2go/main/Splitted-By-Protocol/hy2.txt
 https://raw.githubusercontent.com/Danialsamadi/v2go/main/Sub3.txt
 https://raw.githubusercontent.com/Mosifree/-FREE2CONFIG/refs/heads/main/Vless
 https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/subs/sub34.txt
 https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/subs/sub35.txt
-https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub9.txt
 https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub10.txt
 https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub11.txt
 https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub12.txt

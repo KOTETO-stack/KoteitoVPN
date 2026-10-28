@@ -19,6 +19,7 @@
 
 
 
+
 https://github.com/Argh94/Proxy-List/raw/refs/heads/main/All_Config.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_001.txt
 https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/batches/v2ray/batch_002.txt
@@ -78,6 +79,7 @@ https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub5.txt
 https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub6.txt
 https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub7.txt
 https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub8.txt
+https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Sub9.txt
 https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/hysteria2.txt
 https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/trojan.txt
 https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/vless.txt
