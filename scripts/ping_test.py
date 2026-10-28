@@ -3,7 +3,12 @@
 """
 ping_test.py
 
-Версия 5.4 — реальная проверка: трафик реально пропускается через сервер.
+Версия 5.5 — реальная проверка: трафик реально пропускается через сервер.
+5.5: этап 1 больше не падает на мусорных хостах: некорректное имя (UnicodeError
+     'label empty or too long', это подкласс ValueError), неверный порт (OverflowError)
+     и любая другая неожиданная ошибка одной проверки считаются провалом ЭТОГО сервера,
+     а не валят весь сбор. В логе новые причины: "connect: некорректный адрес",
+     "ошибка проверки".
 5.4: этап 1 устойчивее: "пинг" (ping_ms) теперь время TCP-connect (одна поездка туда-обратно),
      а не connect + TLS-хендшейк (три поездки), у хендшейка отдельный таймаут
      (HANDSHAKE_TIMEOUT); для небольших пулов (до RETRY_MAX_POOL) не ответившие
@@ -120,6 +125,9 @@ STAGE1_FAILS = Counter()
 _STAGE1_LOCK = threading.Lock()
 STAGE1_ACTIVE_RETRIES = 0   # выставляется в main() в зависимости от размера пула
 
+# причины, после которых повтор проверки бессмысленен
+NO_RETRY_REASONS = ("connect: ошибка", "connect: некорректный адрес", "ошибка проверки")
+
 
 def skip(reason):
     UNSUPPORTED[reason] += 1
@@ -156,6 +164,10 @@ def tcp_or_tls_probe(entry):
         return None, "connect: таймаут"
     except OSError:
         return None, "connect: ошибка"
+    except (ValueError, OverflowError, TypeError):
+        # некорректное имя хоста (UnicodeError 'label empty or too long' — подкласс ValueError)
+        # или порт вне диапазона 0-65535 — это мусор из источников, а не причина падать
+        return None, "connect: некорректный адрес"
     try:
         needs_tls = entry.get("proto") in ("vless", "trojan") and entry.get("security_tag") in ("tls", "reality")
         if needs_tls:
@@ -212,26 +224,35 @@ def _count_fail(reason):
 
 
 def quick_check(entry):
-    is_hy2 = entry.get("proto") == "hysteria2"
-    ms, reason = None, "нет ответа"
-    for _attempt in range(1 + STAGE1_ACTIVE_RETRIES):
-        if is_hy2:
-            ms = udp_probe(entry["host"], entry["port"])
-            reason = "hy2: порт закрыт" if ms is None else "ok"
-        else:
-            ms, reason = tcp_or_tls_probe(entry)
-        if ms is not None:
-            break
-        if reason == "connect: ошибка":
-            break  # отказ в соединении или нет DNS: повтор не поможет
-    if ms is None:
-        _count_fail(reason)
+    """Проверка одного сервера на этапе 1. Любая ошибка внутри — это провал только
+    этого сервера: функция никогда не бросает исключение (иначе ex.map уронит весь сбор)."""
+    try:
+        is_hy2 = entry.get("proto") == "hysteria2"
+        ms, reason = None, "нет ответа"
+        for _attempt in range(1 + STAGE1_ACTIVE_RETRIES):
+            try:
+                if is_hy2:
+                    ms = udp_probe(entry["host"], entry["port"])
+                    reason = "hy2: порт закрыт" if ms is None else "ok"
+                else:
+                    ms, reason = tcp_or_tls_probe(entry)
+            except Exception:
+                ms, reason = None, "ошибка проверки"
+            if ms is not None:
+                break
+            if reason in NO_RETRY_REASONS:
+                break  # отказ в соединении, нет DNS или мусорный адрес: повтор не поможет
+        if ms is None:
+            _count_fail(reason)
+            return None
+        if ms > MAX_PING_MS:
+            _count_fail("слишком медленно (> %d мс)" % MAX_PING_MS)
+            return None
+        entry["ping_ms"] = ms
+        return entry
+    except Exception:
+        _count_fail("ошибка проверки")
         return None
-    if ms > MAX_PING_MS:
-        _count_fail("слишком медленно (> %d мс)" % MAX_PING_MS)
-        return None
-    entry["ping_ms"] = ms
-    return entry
 
 
 # =====================================================================
