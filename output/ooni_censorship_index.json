@@ -1,11 +1,11 @@
 {
   "country": "RU",
   "test_name": "web_connectivity",
-  "pressure_percent": 31.7,
-  "measurements": 818618,
-  "anomaly": 225098,
-  "confirmed": 34126,
-  "since": "2026-10-26",
-  "until": "2026-10-30",
-  "updated_utc": "2026-10-29T20:20:36+00:00"
+  "pressure_percent": 32.1,
+  "measurements": 657181,
+  "anomaly": 183013,
+  "confirmed": 27805,
+  "since": "2026-10-27",
+  "until": "2026-10-31",
+  "updated_utc": "2026-10-30T00:00:16+00:00"
 }
