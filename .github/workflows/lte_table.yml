@@ -1,0 +1,17 @@
+name: LTE Table
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  table:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build LTE table
+        run: python3 scripts/lte_table.py
