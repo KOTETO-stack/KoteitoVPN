@@ -138,6 +138,16 @@ def render(servers, nets, rows):
         name = n["name"] + (" (DC)" if n["dc"] == n["servers"] and n["servers"] else "")
         out.append("| %s | %s | %d | %d | %d | %d | %s |" % (
             asn, name or "-", n["servers"], n["green"], n["red"], n["flaky"], share))
+    bad = defaultdict(list)
+    for k, s in servers.items():
+        if s["flaky"] or s["last"] == "R":
+            bad[s["asn"]].append("%s%s (%s)" % (k, " мигает" if s["flaky"] else "", s["note"] or "без описания"))
+    if bad:
+        out.append("")
+        out.append("### Красные и мигающие серверы по сетям")
+        out.append("")
+        for asn, items in sorted(bad.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+            out.append("- %s %s: %s" % (asn, nets[asn]["name"], "; ".join(items)))
     flaky = [(k, s) for k, s in servers.items() if s["flaky"]]
     if flaky:
         out.append("")
