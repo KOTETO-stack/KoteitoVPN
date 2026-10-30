@@ -1,0 +1,67 @@
+# Замеры Karing на мобильной сети (LTE, T-Mobile, Санкт-Петербург).
+# Формат строки:  метка;G или R;host:port;описание;мс
+#   G = зелёный в Karing, R = красный или таймаут. Описание и мс можно не писать.
+# Порядок строк = порядок по времени: новые замеры дописывай В КОНЕЦ файла.
+# Результат сервера для таблицы = его ПОСЛЕДНЯЯ строка. Если у сервера были и G, и R, он «мигает».
+# Строки с # игнорируются. Серверы без известного адреса сюда не вносим.
+
+# --- 26 окт 2026
+26окт;G;45.145.43.151:443;Offenbach vless reality;82
+26окт;G;45.145.43.151:9443;Offenbach-1 vless ws tls;315
+26окт;G;151.101.36.244:443;igareck Anycast trojan ws;146
+26окт;G;39.108.113.127:10086;igareck Shenzhen vmess ws;300
+26окт;G;185.156.44.99:443;igareck Bucharest hy2;567
+26окт;R;s3.huhiuh.space:18642;igareck hy2;
+
+# --- 27 окт 2026, ночью (00:35)
+27окт-ночь;G;45.145.43.151:443;Offenbach vless reality;128
+27окт-ночь;G;45.145.43.151:9443;Offenbach-1 vless ws tls;128
+27окт-ночь;G;tjrb.m2k699.com:24999;Tokyo trojan;301
+27окт-ночь;G;188.225.33.141:443;Russia Saint Petersburg-1 vless ws tls;105
+27окт-ночь;G;185.156.44.99:443;igareck Bucharest hy2;154
+27окт-ночь;G;39.108.113.127:10086;igareck Shenzhen vmess ws;342
+
+# --- 27 окт 2026, днём (11:36)
+27окт-день;R;45.131.4.38:443;igareck Haarlem trojan ws /assignment;
+27окт-день;R;45.80.111.7:443;igareck Paris-14 trojan ws /assignment;
+27окт-день;R;45.130.125.190:443;наш Seychelles trojan ws /assignment;
+27окт-день;R;support.zoom.us:443;igareck Singapore trojan ws, ошибка 520;
+27окт-день;R;39.108.113.127:10086;igareck Shenzhen vmess ws;
+27окт-день;R;sw.golangwikito.cfd:443;Amsterdam vless reality;
+27окт-день;R;2.27.206.215:2095;Frankfurt vless reality grpc sni ya.ru;
+27окт-день;R;flooraccount.net:443;Turkey vless reality h2;
+27окт-день;R;57.128.164.228:8443;UK Erith vless reality sni ozon.ru;
+
+# --- дневные замеры (старый набор, KoteitoVPN и KoteitoVPN 2)
+день;G;163.245.42.48:443;Страсбург vless reality;55
+день;G;104.25.199.149:443;Торонто-9 vless ws tls workers.dev;62
+день;G;104.18.41.190:443;Торонто-9 vless ws tls ccc.010304.xyz;62
+день;G;45.145.43.151:9443;Offenbach vless ws tls;63
+день;G;88.218.170.236:443;Москва-6 vless reality userapi;82
+день;G;ee.h1cloud.net:25895;Тель-Авив-1 vless reality;91
+день;G;50.7.184.122:443;Австрия vless tls vision;96
+день;G;83.147.18.75:443;Лондон-2 vless reality bing;126
+день;G;185.105.108.176:443;Белград vless reality;187
+день;G;81.208.170.142:1500;Джидда vless reality grpc;205
+день;G;5.180.21.86:443;Алматы vless reality;226
+день;G;31.76.91.70:443;Токио vless reality;269
+день;G;103.75.118.228:12683;Токио vless reality apple;269
+день;G;152.32.254.68:5010;Гонконг-4 hy2 salamander;300
+день;G;bl2.nexfile.net:4444;Минск-2 hy2;51
+
+# --- ночные замеры (31 окт, около 00:46-00:50), зелёные
+ночь;G;fre.guren1.me:8443;Гонконг-3 hy2;318
+ночь;G;152.32.254.68:5010;Гонконг-3 hy2 salamander;318
+ночь;G;46.254.19.164:443;Москва-7 vless reality;731
+ночь;G;186.246.9.29:443;Москва-10 vless reality wordpress;233
+ночь;G;45.145.43.151:443;Offenbach vless reality;98
+ночь;G;45.145.43.151:9443;Offenbach-1 vless ws tls;97
+ночь;G;edge.bookmai.com:443;Страсбург-1 vless reality;119
+ночь;G;60.248.219.78:443;Тайвань Longjing vless ws tls;729
+
+# --- ночные замеры, красные (таймаут при соединении)
+ночь;R;185.95.231.156:443;США Secaucus vless reality apple;
+ночь;R;104.18.40.100:443;Торонто vless ws tls ccc.010304.xyz;
+ночь;R;156.252.229.136:8443;Мексика vless reality googleapis;
+ночь;R;178.172.227.124:10444;Беларусь Большое Стиклево vless reality x5;
+ночь;R;95.128.71.79:10444;Беларусь Минск vless reality x5;
