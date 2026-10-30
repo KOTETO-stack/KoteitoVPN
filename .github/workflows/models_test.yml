@@ -1,0 +1,25 @@
+name: Models Test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  models: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call GitHub Models
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for MODEL in openai/gpt-4o-mini openai/gpt-4.1-mini; do
+            echo "=== $MODEL ==="
+            curl -sS -w "\nHTTP %{http_code}\n" \
+              "https://models.github.ai/inference/chat/completions" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Ответь одним словом: привет\"}],\"max_tokens\":20}"
+            echo
+          done
