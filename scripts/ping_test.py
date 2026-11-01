@@ -3,7 +3,12 @@
 """
 ping_test.py
 
-Версия 5.5 — реальная проверка: трафик реально пропускается через сервер.
+Версия 5.6 — реальная проверка: трафик реально пропускается через сервер.
+5.6: «этап 0» — адрес каждого сервера проверяется ДО обращения к сети: пустая или слишком
+     длинная часть имени, недопустимые символы, пробелы, имя без точки, порт вне 1-65535,
+     частные и служебные IP. Мусор отсеивается сразу; в лог идут причины отсева и до
+     SAMPLES_PER_REASON примеров мусорных адресов на каждую причину (по ним видно, откуда
+     мусор берётся). Мусорные адреса также удаляются из истории. Включает всё из 5.5.
 5.5: этап 1 больше не падает на мусорных хостах: некорректное имя (UnicodeError
      'label empty or too long', это подкласс ValueError), неверный порт (OverflowError)
      и любая другая неожиданная ошибка одной проверки считаются провалом ЭТОГО сервера,
@@ -20,6 +25,8 @@ ping_test.py
 5.1: шире и разнообразнее выборка для этапа 2 (см. main()).
 5.2: type=raw (новое имя tcp в Xray) теперь тестируется; в лог выводится разбивка
      причин, по которым конфиг «не поддерживается».
+
+Этап 0 (проверка адресов, без сети): отсев мусорных host и port.
 
 Этап 1 (быстрый отсев):
  - vless/trojan: TCP-connect + TLS-хендшейк на SNI из конфига;
@@ -55,6 +62,7 @@ VPS, имеют больший пинг и в выборку почти не п�
 """
 import concurrent.futures as cf
 from collections import Counter
+import ipaddress
 import json
 import os
 import random
@@ -72,6 +80,10 @@ import urllib.parse
 BASE_DIR = os.path.dirname(__file__)
 IN_FILE = os.path.join(BASE_DIR, "..", "clean_configs.json")
 OUT_FILE = os.path.join(BASE_DIR, "..", "pinged_configs.json")
+
+# ---------- этап 0: проверка адресов без сети ----------
+SAMPLES_PER_REASON = 5      # сколько примеров мусорных адресов печатать на каждую причину
+SAMPLE_MAX_LEN = 90         # длина примера в логе (длинные обрезаются)
 
 # ---------- этап 1: быстрый отсев ----------
 MAX_PING_MS = 500           # порог для TCP-connect (одна поездка туда-обратно)
@@ -125,13 +137,130 @@ STAGE1_FAILS = Counter()
 _STAGE1_LOCK = threading.Lock()
 STAGE1_ACTIVE_RETRIES = 0   # выставляется в main() в зависимости от размера пула
 
+# причины, по которым адрес отсеян на этапе 0, и примеры (для лога)
+BAD_ADDR = Counter()
+BAD_SAMPLES = {}
+
 # причины, после которых повтор проверки бессмысленен
 NO_RETRY_REASONS = ("connect: ошибка", "connect: некорректный адрес", "ошибка проверки")
+
+_LABEL_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def skip(reason):
     UNSUPPORTED[reason] += 1
     return None
+
+
+# =====================================================================
+#                          ЭТАП 0: проверка адресов
+# =====================================================================
+def validate_entry(entry):
+    """Проверка host и port без обращения к сети. Возвращает причину отсева или None, если адрес годен."""
+    try:
+        host = entry.get("host")
+        port = entry.get("port")
+
+        # ---- порт ----
+        if isinstance(port, bool):
+            return "порт не число"
+        try:
+            port_i = int(port)
+        except (TypeError, ValueError):
+            return "порт не число"
+        if not (1 <= port_i <= 65535):
+            return "порт вне диапазона 1-65535"
+
+        # ---- хост ----
+        if not isinstance(host, str) or not host:
+            return "пустой адрес"
+        if host != host.strip() or re.search(r"\s", host):
+            return "пробелы в адресе"
+
+        h = host
+        if h.startswith("[") and h.endswith("]"):
+            h = h[1:-1]  # IPv6 в скобках: для проверки скобки снимаем
+
+        # IP-адрес (v4 или v6)
+        try:
+            ip = ipaddress.ip_address(h)
+        except ValueError:
+            ip = None
+        if ip is not None:
+            if (not ip.is_global) or ip.is_multicast:
+                return "частный или служебный IP"
+            return None
+
+        # дальше это доменное имя
+        if h.endswith("."):
+            h = h[:-1]
+        if not h:
+            return "пустой адрес"
+        if len(h) > 253:
+            return "слишком длинное имя (> 253)"
+        labels = h.split(".")
+        if len(labels) < 2:
+            return "имя без точки"
+        for lb in labels:
+            if not lb:
+                return "пустая часть имени"
+            if len(lb) > 63:
+                return "слишком длинная часть имени (> 63)"
+        if labels[-1].isdigit():
+            return "похоже на неполный или битый IP"
+        if h.isascii():
+            for lb in labels:
+                if not _LABEL_RE.match(lb):
+                    return "недопустимые символы в имени"
+        else:
+            try:
+                h.encode("idna")
+            except UnicodeError:
+                return "ошибка кодировки имени"
+        return None
+    except Exception:
+        return "ошибка проверки адреса"
+
+
+def prefilter(configs):
+    """Этап 0. Возвращает (годные конфиги, множество ключей отсеянных)."""
+    good, bad_keys = [], set()
+    for e in configs:
+        try:
+            reason = validate_entry(e)
+        except Exception:
+            reason = "ошибка проверки адреса"
+        if reason is None:
+            good.append(e)
+            continue
+        BAD_ADDR[reason] += 1
+        try:
+            bad_keys.add(entry_key(e))
+        except Exception:
+            pass
+        samples = BAD_SAMPLES.setdefault(reason, [])
+        if len(samples) < SAMPLES_PER_REASON:
+            try:
+                sample = "%r:%r" % (e.get("host"), e.get("port"))
+            except Exception:
+                sample = "?"
+            if len(sample) > SAMPLE_MAX_LEN:
+                sample = sample[:SAMPLE_MAX_LEN] + "…"
+            samples.append(sample)
+    return good, bad_keys
+
+
+def print_prefilter_report(total):
+    n_bad = sum(BAD_ADDR.values())
+    print("Этап 0: проверка адресов — годных %d из %d, отсеяно %d" % (total - n_bad, total, n_bad))
+    if not n_bad:
+        return
+    for reason, n in BAD_ADDR.most_common():
+        print("  этап 0, отсеяно: %s — %d" % (reason, n))
+    print("Примеры мусорных адресов:")
+    for reason, _n in BAD_ADDR.most_common():
+        for s in BAD_SAMPLES.get(reason, []):
+            print("  [%s] %s" % (reason, s))
 
 
 # =====================================================================
@@ -766,6 +895,15 @@ def main():
         history = load_history()
         configs, hist_keys, n_injected = inject_history(configs, history)
         print("История: записей %d, из них добавлено в проверку %d" % (len(history), n_injected))
+
+    # этап 0: мусорные адреса отсеиваем до обращения к сети
+    total_in = len(configs)
+    configs, bad_keys = prefilter(configs)
+    print_prefilter_report(total_in)
+    if use_history and bad_keys:
+        for k in bad_keys:
+            history.pop(k, None)
+        hist_keys -= bad_keys
 
     STAGE1_ACTIVE_RETRIES = STAGE1_RETRIES if len(configs) <= RETRY_MAX_POOL else 0
 
