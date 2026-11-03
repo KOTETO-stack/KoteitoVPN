@@ -28,6 +28,18 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Cache date
+        id: cdate
+        run: echo "d=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore signal lists cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/signals
+          key: signals-${{ steps.cdate.outputs.d }}
+          restore-keys: |
+            signals-
+
       - name: Install sing-box
         run: |
           TAG=$(git ls-remote --tags --refs https://github.com/SagerNet/sing-box 'refs/tags/v1.12.*' | sed 's#.*refs/tags/##' | grep -E '^v1\.12\.[0-9]+$' | sort -V | tail -1)
@@ -60,6 +72,7 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add output/subscription*.txt output/ad_block_rules.txt docs/
           git add output/ooni_censorship_index.json 2>/dev/null || true
+          git add output/country_priority.json 2>/dev/null || true
           git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление subscription.txt"
           git fetch origin main
           git merge -X ours --no-edit origin/main
