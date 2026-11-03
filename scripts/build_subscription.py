@@ -30,6 +30,14 @@ build_subscription.py
    (только для просмотра, без ссылок);
  - MOBILE_QUOTA = 0 выключает добавку.
 
+Дополнительные сигналы (scripts/net_signals.py, выключаются SIGNALS_ENABLED = False):
+ - списки IP, заблокированных РКН (antifilter): штраф в сортировке, такие серверы в
+   мобильную добавку не берутся (MOBILE_EXCLUDE_RKN);
+ - сети хостеров с ограничением ТСПУ "16 КБ" (data/tspu_asn.json): мягкий штраф;
+ - приоритет стран из данных (ответ с российских узлов, доля в списках РКН и в
+   ТСПУ-сетях): бонус или штраф до 30 мс, отчёт в output/country_priority.json;
+ - любая ошибка сигналов не ломает сборку, сортировка тогда работает как раньше.
+
 Защита от просадки (SHRINK_GUARD): если новая подписка меньше доли SHRINK_GUARD
 от прошлой версии файла, она НЕ перезаписывается (сборка с плохой проверкой
 не должна портить подписки). SHRINK_GUARD = 0 выключает защиту.
@@ -57,6 +65,14 @@ except Exception:
     def ai_score(uri):
         return 0
 
+try:
+    import net_signals
+except Exception as _signals_err:   # файла нет или в нём ошибка: работаем без сигналов
+    net_signals = None
+    _SIGNALS_IMPORT_ERROR = str(_signals_err)
+else:
+    _SIGNALS_IMPORT_ERROR = ""
+
 IN_FILE = os.path.join(os.path.dirname(__file__), "..", "masked_configs.json")
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 OUT_SUB = os.path.join(OUT_DIR, "subscription.txt")
@@ -64,6 +80,7 @@ OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
 OUT_SUB_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular.txt")
 OUT_READABLE_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular_readable.txt")
 OUT_MOBILE_LIST = os.path.join(OUT_DIR, "subscription_mobile_list.txt")
+OUT_COUNTRY_PRIORITY = os.path.join(OUT_DIR, "country_priority.json")
 REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
 OONI_INDEX_FILE = os.path.join(OUT_DIR, "ooni_censorship_index.json")
 PROBE_FILE = os.path.join(OUT_DIR, "ru_probe.json")
@@ -97,6 +114,9 @@ MASK_MAX_BONUS_MS = 40                # потолок влияния оценк
 
 PROBE_PENALTY_MS = 100                # максимальный штраф за недоступность из РФ (0 = выключено)
 PROBE_TTL_HOURS = 48                  # старше этого результат проверки не учитывается
+
+SIGNALS_ENABLED = True                # списки РКН, сети ТСПУ, приоритет стран (scripts/net_signals.py)
+MOBILE_EXCLUDE_RKN = True             # в мобильную добавку не берём серверы из списков РКН
 
 MOBILE_QUOTA = 40                     # серверов мобильной добавки в КАЖДУЮ подписку (0 = выключено)
 MOBILE_COUNTRIES = {"RU"}             # страны, которые берём ТОЛЬКО для мобильной добавки
@@ -187,6 +207,29 @@ def load_ooni_pressure():
         return data.get("pressure_percent")
     except (json.JSONDecodeError, OSError):
         return None
+
+
+def print_ooni_operators():
+    """Выводит в лог давление блокировок по операторам РФ (поле operators из OONI)."""
+    if not os.path.exists(OONI_INDEX_FILE):
+        return
+    try:
+        with open(OONI_INDEX_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return
+    ops = data.get("operators") or []
+    types = data.get("blocking_types") or {}
+    if not ops and not types:
+        return
+    print("::group::OONI по операторам РФ (давление блокировок)")
+    for o in ops:
+        print("%s %s: %s%% (измерений %s)" % (
+            o.get("asn", "?"), o.get("name", ""), o.get("pressure", "?"), o.get("measurements", "?")))
+    if types:
+        print("Способы блокировок (как вернул OONI): " +
+              ", ".join("%s %s" % (k, v) for k, v in types.items()))
+    print("::endgroup::")
 
 
 def rename_uri(raw: str, display_name: str) -> str:
@@ -318,7 +361,7 @@ def probe_penalty_ms(c, probe, now_ts) -> float:
     return PROBE_PENALTY_MS * (1.0 - ratio)
 
 
-def make_sort_key(reports, now, probe):
+def make_sort_key(reports, now, probe, sig=None):
     pressure = load_ooni_pressure()
     high_pressure = pressure is not None and pressure >= OONI_PRESSURE_THRESHOLD
     multiplier = OONI_HIGH_PRESSURE_MULTIPLIER if high_pressure else 1
@@ -351,7 +394,14 @@ def make_sort_key(reports, now, probe):
 
         penalty = probe_penalty_ms(c, probe, now_ts)
 
-        return ping - bonus + penalty
+        extra = 0
+        if sig is not None:
+            try:
+                extra = sig.adjust_ms(c)      # штрафы РКН и ТСПУ минус бонус страны
+            except Exception:
+                extra = 0
+
+        return ping - bonus + penalty + extra
     return sort_key
 
 
@@ -420,20 +470,28 @@ def pad_to_ten(group, leftovers):
     return group
 
 
-def pick_mobile(configs, groups, sort_key, probe):
+def pick_mobile(configs, groups, sort_key, probe, sig=None):
     """Выбирает кандидатов мобильной добавки из нашего же пула.
     Порядок: серверы из MOBILE_COUNTRIES (лучшие по проверке из РФ, потом без
     данных), затем зарубежные, ответившие из РФ не менее чем у MOBILE_MIN_PROBE.
-    Серверы, уже вошедшие в подписки, пропускаются."""
+    Серверы, уже вошедшие в подписки, пропускаются; серверы из списков РКН тоже
+    (если MOBILE_EXCLUDE_RKN)."""
     now_ts = time.time()
     seen = {c["raw"].split("#", 1)[0] for g in groups for c in g}
     cands = []
-    ru_total = ru_probed = foreign_ok = 0
+    ru_total = ru_probed = foreign_ok = rkn_skipped = 0
     for c in configs:
         base = c.get("raw", "").split("#", 1)[0]
         if not base or base in seen or not vless_allowed(c):
             continue
         seen.add(base)
+        if sig is not None and MOBILE_EXCLUDE_RKN:
+            try:
+                if sig.is_rkn(c):
+                    rkn_skipped += 1
+                    continue
+            except Exception:
+                pass
         ratio = probe_ratio(c, probe, now_ts)
         is_mob_country = c.get("country_code", "??") in MOBILE_COUNTRIES
         if is_mob_country:
@@ -452,7 +510,7 @@ def pick_mobile(configs, groups, sort_key, probe):
     cands.sort(key=lambda t: t[:3])
     print(f"Мобильная добавка: серверов из {sorted(MOBILE_COUNTRIES)} в пуле {ru_total} "
           f"(с проверкой из РФ {ru_probed}), зарубежных с ответом из РФ {foreign_ok}, "
-          f"кандидатов {len(cands)}.")
+          f"пропущено из-за списков РКН {rkn_skipped}, кандидатов {len(cands)}.")
     out = []
     for t in cands:
         item = dict(t[3])
@@ -602,6 +660,28 @@ def render_subscription(configs, reports, now, probe, out_sub, out_readable, lab
     return True
 
 
+def build_signals(configs, probe):
+    """Готовит дополнительные сигналы. При любой ошибке возвращает None."""
+    if not SIGNALS_ENABLED:
+        print("Дополнительные сигналы выключены (SIGNALS_ENABLED = False).")
+        return None
+    if net_signals is None:
+        print("Дополнительные сигналы выключены: scripts/net_signals.py не загрузился (%s)."
+              % (_SIGNALS_IMPORT_ERROR or "файла нет"))
+        return None
+    try:
+        net_signals.refresh_rkn()
+        sig = net_signals.Signals(load_asn())
+        now_ts = time.time()
+        sig.prepare(configs, lambda c: probe_ratio(c, probe, now_ts))
+        sig.print_summary()
+        sig.write_country_report(OUT_COUNTRY_PRIORITY)
+        return sig
+    except Exception as e:
+        print("Дополнительные сигналы выключены из-за ошибки: %s" % e)
+        return None
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(IN_FILE, "r", encoding="utf-8") as f:
@@ -610,7 +690,9 @@ def main():
     reports = load_reports()
     probe = load_probe()
     now = datetime.now(timezone.utc)
-    sort_key = make_sort_key(reports, now, probe)
+    print_ooni_operators()
+    sig = build_signals(configs, probe)
+    sort_key = make_sort_key(reports, now, probe, sig)
 
     count = max(1, SUBSCRIPTION_COUNT)
     groups, leftovers = split_pool(configs, sort_key, count)
@@ -620,7 +702,7 @@ def main():
     groups = [pad_to_ten(g, leftovers) for g in groups]
 
     if MOBILE_QUOTA > 0:
-        mobile = pick_mobile(configs, groups, sort_key, probe)
+        mobile = pick_mobile(configs, groups, sort_key, probe, sig)
         added = add_mobile(groups, mobile)
         print(f"Мобильная добавка: добавлено в подписки {added} (квота {MOBILE_QUOTA} на подписку).")
         write_mobile_list(groups, probe)
@@ -628,6 +710,12 @@ def main():
     written = []
     for i, group in enumerate(groups):
         out_sub, out_readable = output_paths(i)
+        if sig is not None:
+            try:
+                rkn_n, tspu_n = sig.group_stats(group)
+                print(f"[{label_for(i)}] из {len(group)} серверов в списках РКН: {rkn_n}, в ТСПУ-сетях: {tspu_n}.")
+            except Exception:
+                pass
         if render_subscription(group, reports, now, probe, out_sub, out_readable, label_for(i)):
             written.append((i, group))
 
