@@ -17,7 +17,13 @@ net_signals.py
     с российских узлов (ru_probe), доля серверов в списках РКН и в ТСПУ-сетях. Страна лучше
     медианной получает бонус до COUNTRY_BONUS_MAX_MS, хуже медианной штраф. Мало данных у
     страны (меньше COUNTRY_MIN_SERVERS серверов) значит бонуса нет.
-Итог для сервера: adjust_ms(c) = штрафы минус бонус страны (в мс, как пинг).
+ 4. Замеры на реальном LTE (lte_results.txt в корне репозитория, формат как у lte_table.py):
+    сервер, который в последнем замере был зелёным и не мигал, получает бонус
+    LTE_SERVER_GREEN_BONUS_MS, красный и не мигавший получает штраф; у серверов без замера
+    действует мягкий бонус или штраф по доле зелёных в их сети (ASN), если в сети уже есть
+    не меньше LTE_ASN_MIN_SOLID замеренных серверов. Замеры сняты на одном операторе,
+    поэтому веса небольшие. В лог выводится проверка слоёв по замерам.
+Итог для сервера: adjust_ms(c) = штрафы + замеры LTE - бонус страны (в мс, как пинг).
 """
 import bisect
 import ipaddress
@@ -56,6 +62,15 @@ COUNTRY_SPAN_MS = 120         # мс за разницу качества в 1.0
 COUNTRY_WEIGHTS = {"probe": 0.6, "rkn": 0.2, "tspu": 0.2}
 
 MAX_TOTAL_PENALTY_MS = 300    # потолок суммы штрафов РКН и ТСПУ
+
+# ---------- замеры на LTE ----------
+LTE_FILE = os.path.join(ROOT, "lte_results.txt")
+LTE_CACHE = os.path.join(CACHE_DIR, "lte_ip_info.json")   # IP -> сеть, чтобы не спрашивать ip-api каждый час
+LTE_SERVER_GREEN_BONUS_MS = 40    # бонус серверу, зелёному в последнем замере
+LTE_SERVER_RED_PENALTY_MS = 40    # штраф серверу, красному в последнем замере
+LTE_ASN_MAX_MS = 30               # потолок эффекта по сети для серверов без своего замера
+LTE_ASN_MIN_SOLID = 3             # столько замеренных (не мигавших) серверов нужно в сети
+LTE_ASN_PRIOR = 3                 # чем меньше замеров в сети, тем слабее её эффект
 
 
 def log(msg):
@@ -194,6 +209,114 @@ def load_tspu():
 
 
 # =====================================================================
+#                          замеры на LTE
+# =====================================================================
+class LteLayer:
+    """Читает lte_results.txt и даёт поправку серверу по его замеру или по сети."""
+
+    def __init__(self, asn_info):
+        self.ok = False
+        self.servers = {}     # "ip:порт" -> запись замера
+        self.by_host = {}     # "хост:порт" -> та же запись
+        self.asn = {}         # номер сети -> {green, red, flaky, name}
+        try:
+            self._load(asn_info or {})
+        except Exception as e:
+            log("Слой замеров LTE выключен: %s" % e)
+
+    def _ip_info(self, ips, asn_info):
+        """Сети для IP: сначала из asn_info.json текущего пула, потом из кэша, потом ip-api."""
+        rev = {}
+        for _host, v in asn_info.items():
+            if isinstance(v, dict) and v.get("ip") and v.get("asn"):
+                rev[v["ip"]] = v
+        try:
+            with open(LTE_CACHE, "r", encoding="utf-8") as f:
+                cache = json.load(f)
+            if not isinstance(cache, dict):
+                cache = {}
+        except (OSError, ValueError):
+            cache = {}
+        info, missing = {}, []
+        for ip in sorted(set(ips)):
+            if ip in rev:
+                v = rev[ip]
+                info[ip] = {"as": ("%s %s" % (v["asn"], v.get("name", ""))).strip(),
+                            "asname": v.get("name", ""), "isp": v.get("isp", ""),
+                            "hosting": bool(v.get("hosting"))}
+            elif ip in cache:
+                info[ip] = cache[ip]
+            else:
+                missing.append(ip)
+        if missing:
+            try:
+                import lte_table
+                got = lte_table.lookup(missing)
+                for ip, d in got.items():
+                    info[ip] = d
+                    cache[ip] = d
+                os.makedirs(CACHE_DIR, exist_ok=True)
+                with open(LTE_CACHE, "w", encoding="utf-8") as f:
+                    json.dump(cache, f, ensure_ascii=False)
+            except Exception as e:
+                log("Замеры LTE: сети для %d IP не определены (%s)" % (len(missing), e))
+        return info
+
+    def _load(self, asn_info):
+        if not os.path.exists(LTE_FILE):
+            log("Замеры LTE: файла lte_results.txt нет, слой выключен.")
+            return
+        import lte_table
+        rows = lte_table.parse_results(LTE_FILE)
+        if not rows:
+            log("Замеры LTE: в lte_results.txt нет замеров, слой выключен.")
+            return
+        ips = {h: lte_table.resolve(h) for h in sorted({r["host"] for r in rows})}
+        info = self._ip_info([ip for ip in ips.values() if ip], asn_info)
+        servers, nets = lte_table.build(rows, ips, info)
+        for key, s in servers.items():
+            _ip, _sep, port = key.rpartition(":")
+            rec = {"ip": s["ip"], "asn": asn_number(s["asn"]), "g": s["g"], "r": s["r"],
+                   "last": s["last"], "flaky": bool(s["flaky"]), "key": key}
+            self.servers[key] = rec
+            for h in s["hosts"]:
+                self.by_host["%s:%s" % (h, port)] = rec
+        for asn_s, n in nets.items():
+            num = asn_number(asn_s)
+            if num is None:
+                continue
+            self.asn[num] = {"green": n["green"], "red": n["red"], "flaky": n["flaky"],
+                             "name": n.get("name", "")}
+        self.ok = True
+
+    def match(self, c, ip):
+        port = c.get("port")
+        rec = self.servers.get("%s:%s" % (ip, port)) if ip else None
+        if rec is None:
+            rec = self.by_host.get("%s:%s" % (str(c.get("host", "")).strip().lower(), port))
+        return rec
+
+    def adjust_ms(self, c, ip, asn):
+        """Минус: бонус (сервер или сеть зелёные), плюс: штраф."""
+        rec = self.match(c, ip)
+        if rec is not None:
+            if rec["flaky"]:
+                return 0.0
+            if rec["last"] == "G":
+                return -float(LTE_SERVER_GREEN_BONUS_MS)
+            if rec["last"] == "R":
+                return float(LTE_SERVER_RED_PENALTY_MS)
+        n = self.asn.get(asn) if asn is not None else None
+        if n:
+            solid = n["green"] + n["red"]
+            if solid >= LTE_ASN_MIN_SOLID:
+                share = n["green"] / float(solid)
+                shrink = solid / float(solid + LTE_ASN_PRIOR)
+                return (0.5 - share) * 2.0 * LTE_ASN_MAX_MS * shrink
+        return 0.0
+
+
+# =====================================================================
 #                          главный объект
 # =====================================================================
 class Signals:
@@ -201,6 +324,7 @@ class Signals:
         self.asn_info = asn_info or {}
         self.rkn, self.rkn_sources = load_rkn()
         self.tspu = load_tspu()
+        self.lte = LteLayer(self.asn_info)
         self.rkn_penalty = RKN_PENALTY_MS
         self.country = {}
         self._memo = {}
@@ -224,7 +348,13 @@ class Signals:
         if asn is not None and asn in self.tspu:
             tspu = self.tspu[asn]["penalty"]
             tname = self.tspu[asn]["name"]
-        res = {"ip": ip, "asn": asn, "rkn": rkn, "tspu": tspu, "tspu_name": tname}
+        lte = 0.0
+        if self.lte.ok:
+            try:
+                lte = self.lte.adjust_ms(c, ip, asn)
+            except Exception:
+                lte = 0.0
+        res = {"ip": ip, "asn": asn, "rkn": rkn, "tspu": tspu, "tspu_name": tname, "lte": lte}
         self._memo[key] = res
         return res
 
@@ -240,8 +370,8 @@ class Signals:
         return self.country.get(c.get("country_code") or "??", {}).get("bonus_ms", 0.0)
 
     def adjust_ms(self, c):
-        """Что добавить к баллу сервера: штрафы минус бонус страны (мс)."""
-        return self.penalty_ms(c) - self.country_bonus_ms(c)
+        """Что добавить к баллу сервера: штрафы плюс поправка по замерам LTE минус бонус страны (мс)."""
+        return self.penalty_ms(c) + self.evaluate(c)["lte"] - self.country_bonus_ms(c)
 
     # --- подготовка по всему пулу ---
     def prepare(self, configs, ratio_fn):
@@ -249,8 +379,13 @@ class Signals:
         total = len(configs)
         stats = {}
         rkn_total = 0
+        lte_pool = {"G": 0, "R": 0, "flaky": 0}
         for c in configs:
             e = self.evaluate(c)
+            if self.lte.ok:
+                rec = self.lte.match(c, e["ip"])
+                if rec is not None:
+                    lte_pool["flaky" if rec["flaky"] else rec["last"]] += 1
             cc = c.get("country_code") or "??"
             s = stats.setdefault(cc, {"n": 0, "probe": [], "rkn": 0, "tspu": 0})
             s["n"] += 1
@@ -315,6 +450,7 @@ class Signals:
             }
         self._totals = {"servers": total, "rkn": rkn_total,
                         "tspu": sum(s["tspu"] for s in stats.values())}
+        self._lte_pool = lte_pool
 
     # --- отчёты ---
     def print_summary(self):
@@ -324,6 +460,7 @@ class Signals:
             % (src, self.rkn.count, len(self.tspu)))
         log("Сигналы: из %d серверов пула в списках РКН %d (штраф %d мс), в ТСПУ-сетях %d."
             % (t["servers"], t["rkn"], self.rkn_penalty, t["tspu"]))
+        self.print_lte()
         ranked = sorted(((cc, v) for cc, v in self.country.items() if v["quality"] is not None),
                         key=lambda kv: -kv[1]["bonus_ms"])
         if ranked:
@@ -336,6 +473,30 @@ class Signals:
             log("::endgroup::")
         else:
             log("Приоритет стран: данных пока мало, бонусов нет.")
+
+    def print_lte(self):
+        """Сводка по замерам LTE и проверка слоёв РКН и ТСПУ на этих замерах."""
+        if not self.lte.ok:
+            return
+        pool = getattr(self, "_lte_pool", {"G": 0, "R": 0, "flaky": 0})
+        log("Замеры LTE: серверов в замерах %d, сетей с данными %d; в текущем пуле: зелёных %d, "
+            "красных %d, мигающих %d (бонус %d мс, штраф %d мс; для серверов без замера "
+            "эффект по сети до %d мс)."
+            % (len(self.lte.servers), len(self.lte.asn), pool["G"], pool["R"], pool["flaky"],
+               LTE_SERVER_GREEN_BONUS_MS, LTE_SERVER_RED_PENALTY_MS, LTE_ASN_MAX_MS))
+        groups = {"в списках РКН": [0, 0], "в ТСПУ-сетях": [0, 0], "в остальных": [0, 0]}
+        for rec in self.lte.servers.values():
+            if rec["flaky"] or rec["last"] not in ("G", "R"):
+                continue
+            in_rkn = bool(rec["ip"]) and self.rkn.count > 0 and self.rkn.contains(rec["ip"])
+            in_tspu = rec["asn"] is not None and rec["asn"] in self.tspu
+            name = "в списках РКН" if in_rkn else ("в ТСПУ-сетях" if in_tspu else "в остальных")
+            groups[name][1] += 1
+            if rec["last"] == "G":
+                groups[name][0] += 1
+        parts = ["%s: зелёных %d из %d" % (k, g, t) for k, (g, t) in groups.items()]
+        log("Проверка слоёв по замерам LTE (замеренные серверы): " + "; ".join(parts) +
+            ". Если у РКН или ТСПУ доля зелёных не ниже, чем у остальных, слой надо ослабить.")
 
     def group_stats(self, group):
         rkn = sum(1 for c in group if self.is_rkn(c))
