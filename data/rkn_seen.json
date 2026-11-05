@@ -48,6 +48,13 @@
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
+ "141.193.213.21": {
+  "first": "2026-11-05",
+  "last": "2026-11-05",
+  "country": "US",
+  "asn": "AS209242",
+  "net": "CLOUDFLARESPECTRUM"
+ },
  "144.31.140.125": {
   "first": "2026-11-05",
   "last": "2026-11-05",
@@ -61,6 +68,13 @@
   "country": "FR",
   "asn": "AS215311",
   "net": "REGXA-CLOUD"
+ },
+ "145.63.143.205": {
+  "first": "2026-11-05",
+  "last": "2026-11-05",
+  "country": "PL",
+  "asn": "AS210895",
+  "net": "podaon-pl-1"
  },
  "146.103.118.189": {
   "first": "2026-11-05",
