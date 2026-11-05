@@ -1,4 +1,11 @@
 {
+ "1.1.1.1": {
+  "first": "2026-11-05",
+  "last": "2026-11-05",
+  "country": "AU",
+  "asn": "AS13335",
+  "net": "CLOUDFLARENET"
+ },
  "104.171.133.209": {
   "first": "2026-11-05",
   "last": "2026-11-05",
@@ -258,12 +265,33 @@
   "asn": "AS57494",
   "net": "ADMAN-AS"
  },
+ "208.69.78.208": {
+  "first": "2026-11-05",
+  "last": "2026-11-05",
+  "country": "CH",
+  "asn": "AS63023",
+  "net": "AS-GLOBALTELEHOST"
+ },
  "208.69.78.217": {
   "first": "2026-11-05",
   "last": "2026-11-05",
   "country": "CH",
   "asn": "AS63023",
   "net": "AS-GLOBALTELEHOST"
+ },
+ "208.69.78.29": {
+  "first": "2026-11-05",
+  "last": "2026-11-05",
+  "country": "CH",
+  "asn": "AS63023",
+  "net": "AS-GLOBALTELEHOST"
+ },
+ "209.200.246.148": {
+  "first": "2026-11-05",
+  "last": "2026-11-05",
+  "country": "CA",
+  "asn": "AS215311",
+  "net": "REGXA-CLOUD"
  },
  "213.152.165.195": {
   "first": "2026-11-05",
