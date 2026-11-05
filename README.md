@@ -14,14 +14,8 @@ Workflow 2 — build_subscription.yml (через 20 мин после перв�
 Settings → Actions → General → Workflow permissions → Read and write permissions.
 Запусти оба workflow вручную первый раз (Actions → Run workflow).
 Ссылка подписки: https://raw.githubusercontent.com/<аккаунт>/<репо>/main/output/subscription.txt
-Пункты, изменённые от исходного ТЗ
+Пункты, изменённые от исходного 
 
-Тор-мосты не совместимы с Trojan/VLESS/Hysteria2 технически — не встроены.
-"Маскировка под Яндекс" заменена на реально работающий uTLS fingerprint (fp=chrome).
-Блокировка рекламы YouTube настраивается в самом Karing (см. ad_block_setup_RU.md).
-Исправленный баг: build_subscription падал за 0 секунд
-
-Причина была в heredoc внутри run: | в yml — YAML сдвигает отступ у закрывающего маркера, bash требует его без отступа. Исправлено: логика вынесена в scripts/raw_to_json.py, никакого inline-питона в yml больше нет.
 
 Проверка
 
