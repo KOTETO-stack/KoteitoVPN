@@ -63,6 +63,7 @@ jobs:
           python scripts/xray_mask.py
           python scripts/ooni_censorship_index.py
           python scripts/build_subscription.py
+          python scripts/update_info.py || echo "update_info: ошибка, README не обновлён"
           python scripts/build_ad_block_rules.py
           python scripts/build_status_page.py
 
@@ -73,6 +74,7 @@ jobs:
           git add output/subscription*.txt output/ad_block_rules.txt docs/
           git add output/ooni_censorship_index.json 2>/dev/null || true
           git add output/country_priority.json 2>/dev/null || true
+          git add output/censorship_info.json data/rkn_seen.json README.md 2>/dev/null || true
           git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление subscription.txt"
           git fetch origin main
           git merge -X ours --no-edit origin/main
