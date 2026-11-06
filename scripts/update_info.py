@@ -34,6 +34,7 @@ sys.path.insert(0, HERE)
 README = os.path.join(ROOT, "README.md")
 INFO_JSON = os.path.join(ROOT, "output", "censorship_info.json")
 SEEN_FILE = os.path.join(ROOT, "data", "rkn_seen.json")
+RKN_LIST_FILE = os.path.join(ROOT, "data", "rkn_blocked_cidr.txt")
 COUNTRY_FILE = os.path.join(ROOT, "output", "country_priority.json")
 OONI_FILE = os.path.join(ROOT, "output", "ooni_censorship_index.json")
 ASN_FILE = os.path.join(ROOT, "output", "asn_info.json")
@@ -154,6 +155,11 @@ def rkn_info():
                 "file_updated_utc": datetime.fromtimestamp(os.path.getmtime(path), timezone.utc)
                                     .strftime("%Y-%m-%d %H:%M"),
             }
+    try:
+        with open(RKN_LIST_FILE, "r", encoding="utf-8") as f:
+            info["list_lines"] = sum(1 for line in f if line.strip() and not line.startswith("#"))
+    except OSError:
+        info["list_lines"] = 0
     info["ranges"] = rkn.count
     info["addresses"] = sum(e - s + 1 for s, e in zip(rkn.starts, rkn.ends))
     info["available"] = rkn.count > 0
@@ -232,8 +238,11 @@ def build_block(info, now_str):
             L.append("- Список `%s`: записей %d, файл обновлён %s UTC." % (name, s["entries"], s["file_updated_utc"]))
         L.append("- После слияния диапазонов: %d, они покрывают адресов: %d." % (r["ranges"], r["addresses"]))
         share = round(100.0 * r["pool_flagged"] / r["pool_total"]) if r["pool_total"] else 0
-        L.append("- Серверов пула в списках сейчас: %d из %d (%d%%). Такие серверы получают штраф при сортировке "
-                 "и в мобильную добавку не берутся." % (r["pool_flagged"], r["pool_total"], share))
+        L.append("- Серверов пула в списках сейчас: %d из %d (%d%%). Такие серверы в подписки не попадают "
+                 "(кроме случая, когда списки выглядят слишком широкими: тогда остаётся только штраф)."
+                 % (r["pool_flagged"], r["pool_total"], share))
+        if r.get("list_lines"):
+            L.append("- Полный объединённый список: `data/rkn_blocked_cidr.txt` (подсетей и адресов: %d)." % r["list_lines"])
         L.append("- Замечено адресов за последние %d дней: %d (память в `data/rkn_seen.json`)."
                  % (RKN_SEEN_DAYS, info["rkn_seen_count"]))
         nets = Counter((f["asn"] or "?", f["net_name"]) for f in r["flagged"])
