@@ -8,7 +8,7 @@
  },
  "104.171.133.209": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "RU",
   "asn": "AS9123",
   "net": "TimeWeb-AS"
@@ -22,35 +22,35 @@
  },
  "104.239.72.227": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CY",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "130.12.242.106": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS214716",
   "net": "WEYRO"
  },
  "131.123.37.116": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "BG",
   "asn": "AS200019",
   "net": "AlexHost"
  },
  "131.123.37.152": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "BG",
   "asn": "AS200019",
   "net": "AlexHost"
  },
  "141.193.213.20": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "US",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
@@ -64,7 +64,7 @@
  },
  "144.31.140.125": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS215590",
   "net": "XORA-AS"
@@ -85,7 +85,7 @@
  },
  "146.103.118.189": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS216071",
   "net": "VDSINA"
@@ -99,28 +99,28 @@
  },
  "150.95.109.109": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "VN",
   "asn": "AS131392",
   "net": "RUNSYSTEM-AS-VN"
  },
  "151.241.226.201": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "TR",
   "asn": "AS57043",
   "net": "HOSTKEY-AS"
  },
  "151.241.88.81": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "US",
   "asn": "AS212336",
   "net": "BYTEVIRTLLC"
  },
  "151.243.169.164": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS57043",
   "net": "HOSTKEY-AS"
@@ -134,70 +134,70 @@
  },
  "152.42.130.189": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS14061",
   "net": "DIGITALOCEAN-ASN"
  },
  "154.197.75.30": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "155.103.71.142": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "TR",
   "asn": "AS44382",
   "net": "WhiteLabel"
  },
  "172.235.51.71": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "US",
   "asn": "AS63949",
   "net": "AKAMAI-LINODE-AP"
  },
  "172.236.227.60": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "US",
   "asn": "AS63949",
   "net": "AKAMAI-LINODE-AP"
  },
  "185.159.247.30": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "EE",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "185.162.229.30": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "GB",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "185.162.229.40": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "GB",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "185.162.230.30": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "GB",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "188.116.27.6": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS58061",
   "net": "SCALAXY-AS"
@@ -211,21 +211,21 @@
  },
  "188.164.248.67": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "188.164.248.81": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "188.253.26.143": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS42532",
   "net": "VEESP-LV-AS"
@@ -246,14 +246,14 @@
  },
  "195.123.245.241": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CZ",
   "asn": "AS204957",
   "net": "GREENFLOID-AS"
  },
  "201.24.121.243": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "RU",
   "asn": "AS9123",
   "net": "TimeWeb-AS"
@@ -265,37 +265,44 @@
   "asn": "AS57494",
   "net": "ADMAN-AS"
  },
+ "208.69.78.158": {
+  "first": "2026-11-06",
+  "last": "2026-11-06",
+  "country": "CH",
+  "asn": "AS63023",
+  "net": "AS-GLOBALTELEHOST"
+ },
  "208.69.78.208": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CH",
   "asn": "AS63023",
   "net": "AS-GLOBALTELEHOST"
  },
  "208.69.78.217": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CH",
   "asn": "AS63023",
   "net": "AS-GLOBALTELEHOST"
  },
  "208.69.78.29": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CH",
   "asn": "AS63023",
   "net": "AS-GLOBALTELEHOST"
  },
  "209.200.246.148": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CA",
   "asn": "AS215311",
   "net": "REGXA-CLOUD"
  },
  "213.152.165.195": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS49453",
   "net": "GLOBALLAYER"
@@ -309,35 +316,35 @@
  },
  "213.152.165.199": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS49453",
   "net": "GLOBALLAYER"
  },
  "213.152.165.200": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS49453",
   "net": "GLOBALLAYER"
  },
  "213.152.165.204": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS49453",
   "net": "GLOBALLAYER"
  },
  "217.144.188.185": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "FI",
   "asn": "AS210644",
   "net": "AEZA-AS"
  },
  "217.60.33.67": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "PL",
   "asn": "AS197574",
   "net": "EXPRESSHOST"
@@ -351,84 +358,84 @@
  },
  "45.130.125.190": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "SC",
   "asn": "AS13335",
   "net": "CLOUDFLARENET"
  },
  "45.139.27.9": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "RU",
   "asn": "AS34959",
   "net": "PROCLOUD"
  },
  "45.192.12.106": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "PL",
   "asn": "AS197574",
   "net": "EXPRESSHOST"
  },
  "46.28.71.247": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "ES",
   "asn": "AS8254",
   "net": "ROUTE95"
  },
  "5.230.219.105": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS12586",
   "net": "ASGHOSTNET"
  },
  "5.230.219.109": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS12586",
   "net": "ASGHOSTNET"
  },
  "5.252.179.15": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS39798",
   "net": "MivoCloud"
  },
  "5.253.189.238": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS216475",
   "net": "nktelecom"
  },
  "5.34.177.164": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "SG",
   "asn": "AS204957",
   "net": "GREENFLOID-AS"
  },
  "62.210.147.2": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "FR",
   "asn": "AS12876",
   "net": "AS12876"
  },
  "62.72.166.30": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CW",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "72.56.38.83": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "RU",
   "asn": "AS9123",
   "net": "TimeWeb-AS"
@@ -442,56 +449,56 @@
  },
  "79.141.164.124": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS59711",
   "net": "HZ-EU-AS"
  },
  "82.118.16.187": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "IT",
   "asn": "AS21100",
   "net": "ITLDC-EU"
  },
  "82.118.19.153": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS21100",
   "net": "ITLDC-EU"
  },
  "83.147.18.75": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "GB",
   "asn": "AS215311",
   "net": "REGXA-CLOUD"
  },
  "87.199.205.28": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "NL",
   "asn": "AS216071",
   "net": "VDSINA"
  },
  "88.216.67.30": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "CW",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
  "88.99.213.222": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS24940",
   "net": "HETZNER-AS"
  },
  "89.144.53.4": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "DE",
   "asn": "AS214902",
   "net": "PFWEBSOLUTIONS"
