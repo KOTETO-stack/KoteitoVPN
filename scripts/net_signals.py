@@ -50,6 +50,14 @@ RKN_DOWNLOAD_TIMEOUT = 60
 RKN_PENALTY_MS = 250          # штраф серверу из списков РКН
 RKN_SOFT_PENALTY_MS = 80      # штраф, если списки слишком широкие
 RKN_MAX_SHARE = 0.4           # доля пула в списках, выше которой штраф смягчается
+RKN_EXCLUDE = True            # серверы с IP из списков РКН в подписки не берутся совсем
+RKN_EXCLUDE_MAX_SHARE = 0.6   # если в списках больше этой доли пула, списки считаются слишком
+                              # широкими: серверы не убираются, остаётся только штраф
+
+RKN_SAVE_LIST = True          # сохранять объединённый список подсетей в data/rkn_blocked_cidr.txt
+RKN_LIST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "rkn_blocked_cidr.txt")
+RKN_SAVE_MAX_LINES = 200000   # список длиннее не сохраняем (чтобы не раздувать репозиторий)
+RKN_FLAGGED_MAX = 300         # сколько попавших в списки серверов пула записывать в отчёт
 
 # ---------- ТСПУ ----------
 TSPU_DEFAULT_PENALTY_MS = 50  # штраф сети из data/tspu_asn.json, если свой не указан
@@ -109,6 +117,14 @@ class IntervalSet:
             return False
         i = bisect.bisect_right(self.starts, n) - 1
         return i >= 0 and n <= self.ends[i]
+
+    def cidr_lines(self):
+        """Диапазоны в виде строк CIDR (по порядку адресов)."""
+        out = []
+        for s, e in zip(self.starts, self.ends):
+            for net in ipaddress.summarize_address_range(ipaddress.IPv4Address(s), ipaddress.IPv4Address(e)):
+                out.append(str(net))
+        return out
 
 
 def _download(url, timeout=RKN_DOWNLOAD_TIMEOUT):
@@ -326,6 +342,7 @@ class Signals:
         self.tspu = load_tspu()
         self.lte = LteLayer(self.asn_info)
         self.rkn_penalty = RKN_PENALTY_MS
+        self.exclude_active = True      # prepare() выключает, если списки РКН слишком широкие
         self.country = {}
         self._memo = {}
 
@@ -361,9 +378,34 @@ class Signals:
     def is_rkn(self, c):
         return self.evaluate(c)["rkn"]
 
+    def _lte_green(self, c, e):
+        """True, если сервер напрямую замерен зелёным на мобильной сети (не мигает): замер важнее списка."""
+        if not self.lte.ok:
+            return False
+        try:
+            rec = self.lte.match(c, e["ip"])
+        except Exception:
+            return False
+        return rec is not None and not rec.get("flaky") and rec.get("last") == "G"
+
+    def blocked(self, c):
+        """True, если сервер надо убрать из подписок: его IP в списках РКН."""
+        if not RKN_EXCLUDE or not self.exclude_active:
+            return False
+        e = self.evaluate(c)
+        return bool(e["rkn"]) and not self._lte_green(c, e)
+
+    def drop_blocked(self, configs):
+        """Убирает серверы из списков РКН. Возвращает (оставшиеся, убранные)."""
+        keep, dropped = [], []
+        for c in configs:
+            (dropped if self.blocked(c) else keep).append(c)
+        return keep, dropped
+
     def penalty_ms(self, c):
         e = self.evaluate(c)
-        pen = (self.rkn_penalty if e["rkn"] else 0.0) + e["tspu"]
+        rkn_pen = self.rkn_penalty if (e["rkn"] and not self._lte_green(c, e)) else 0.0
+        pen = rkn_pen + e["tspu"]
         return min(pen, MAX_TOTAL_PENALTY_MS)
 
     def country_bonus_ms(self, c):
@@ -380,6 +422,7 @@ class Signals:
         stats = {}
         rkn_total = 0
         lte_pool = {"G": 0, "R": 0, "flaky": 0}
+        self._flagged = []
         for c in configs:
             e = self.evaluate(c)
             if self.lte.ok:
@@ -392,6 +435,9 @@ class Signals:
             if e["rkn"]:
                 s["rkn"] += 1
                 rkn_total += 1
+                if len(self._flagged) < RKN_FLAGGED_MAX:
+                    self._flagged.append({"ip": e["ip"], "country": cc, "asn": e["asn"],
+                                          "name": c.get("display_name") or ""})
             if e["tspu"] > 0:
                 s["tspu"] += 1
             try:
@@ -401,6 +447,11 @@ class Signals:
             if r is not None:
                 s["probe"].append(r)
 
+        if total and self.rkn.count > 0 and rkn_total / float(total) > RKN_EXCLUDE_MAX_SHARE:
+            self.exclude_active = False
+            log("ВНИМАНИЕ: в списках РКН %d из %d серверов (%d%%), это больше порога %d%%: списки похожи на "
+                "слишком широкие, серверы НЕ исключаются, остаётся только штраф"
+                % (rkn_total, total, round(100.0 * rkn_total / total), round(100 * RKN_EXCLUDE_MAX_SHARE)))
         if total and self.rkn.count > 0 and rkn_total / float(total) > RKN_MAX_SHARE:
             self.rkn_penalty = RKN_SOFT_PENALTY_MS
             log("ВНИМАНИЕ: в списках РКН %d из %d серверов (%d%%), это слишком много; "
@@ -503,17 +554,88 @@ class Signals:
         tspu = sum(1 for c in group if self.evaluate(c)["tspu"] > 0)
         return rkn, tspu
 
+    def save_rkn_list(self):
+        """Пишет объединённый список подсетей РКН в data/rkn_blocked_cidr.txt (только если он изменился).
+        Возвращает число строк в файле или 0."""
+        if not RKN_SAVE_LIST or self.rkn.count == 0:
+            return 0
+        try:
+            lines = self.rkn.cidr_lines()
+            if len(lines) > RKN_SAVE_MAX_LINES:
+                log("Список РКН не сохранён в репозиторий: %d строк (предел %d)" % (len(lines), RKN_SAVE_MAX_LINES))
+                return 0
+            header = ["# Подсети и адреса, заблокированные РКН (объединённые списки antifilter: %s)."
+                      % ", ".join(name for name, _u in RKN_SOURCES),
+                      "# Файл создаёт scripts/net_signals.py, вручную не править. Только IPv4, по одной подсети в строке."]
+            text = "\n".join(header + lines) + "\n"
+            try:
+                with open(RKN_LIST_FILE, "r", encoding="utf-8") as f:
+                    if f.read() == text:
+                        return len(lines)
+            except OSError:
+                pass
+            os.makedirs(os.path.dirname(RKN_LIST_FILE), exist_ok=True)
+            with open(RKN_LIST_FILE, "w", encoding="utf-8") as f:
+                f.write(text)
+            log("Список РКН сохранён: data/rkn_blocked_cidr.txt (%d строк)" % len(lines))
+            return len(lines)
+        except Exception as e:
+            log("Список РКН не сохранён (%s)" % e)
+            return 0
+
     def write_country_report(self, path):
+        """Пишет output/country_priority.json (как раньше) и рядом output/network_signals.json
+        со всеми сигналами: списки РКН, сети ТСПУ, страны, замеры LTE. Из него собирается README."""
+        updated = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime())
+        countries = dict(sorted(self.country.items(), key=lambda kv: -kv[1]["bonus_ms"]))
+        t = getattr(self, "_totals", {"servers": 0, "rkn": 0, "tspu": 0})
+        list_lines = self.save_rkn_list()
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             data = {
-                "updated_utc": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()),
+                "updated_utc": updated,
                 "rkn_ranges": self.rkn.count,
                 "rkn_penalty_ms": self.rkn_penalty,
                 "tspu_asn_count": len(self.tspu),
-                "countries": dict(sorted(self.country.items(), key=lambda kv: -kv[1]["bonus_ms"])),
+                "countries": countries,
             }
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=1)
         except OSError as e:
             log("Приоритет стран: файл не записан (%s)" % e)
+            return
+        try:
+            pool = getattr(self, "_lte_pool", {"G": 0, "R": 0, "flaky": 0})
+            full = {
+                "updated_utc": updated,
+                "rkn": {
+                    "sources": dict(self.rkn_sources),
+                    "ranges": self.rkn.count,
+                    "penalty_ms": self.rkn_penalty,
+                    "pool_total": t["servers"],
+                    "pool_flagged": t["rkn"],
+                    "flagged_servers": getattr(self, "_flagged", []),
+                    "list_file": "data/rkn_blocked_cidr.txt" if list_lines else "",
+                    "list_lines": list_lines,
+                },
+                "tspu": {
+                    "asn_count": len(self.tspu),
+                    "pool_flagged": t["tspu"],
+                    "asn": {str(k): v for k, v in sorted(self.tspu.items())},
+                },
+                "countries": countries,
+                "lte": {
+                    "ok": bool(self.lte.ok),
+                    "servers_measured": len(self.lte.servers),
+                    "networks": len(self.lte.asn),
+                    "pool_green": pool["G"], "pool_red": pool["R"], "pool_flaky": pool["flaky"],
+                    "server_bonus_ms": LTE_SERVER_GREEN_BONUS_MS,
+                    "server_penalty_ms": LTE_SERVER_RED_PENALTY_MS,
+                    "network_max_ms": LTE_ASN_MAX_MS,
+                },
+            }
+            out = os.path.join(os.path.dirname(path), "network_signals.json")
+            with open(out, "w", encoding="utf-8") as f:
+                json.dump(full, f, ensure_ascii=False, indent=1)
+        except Exception as e:
+            log("Сводка сигналов (network_signals.json) не записана (%s)" % e)
