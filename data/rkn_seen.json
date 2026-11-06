@@ -6,6 +6,13 @@
   "asn": "AS13335",
   "net": "CLOUDFLARENET"
  },
+ "103.133.1.160": {
+  "first": "2026-11-06",
+  "last": "2026-11-06",
+  "country": "US",
+  "asn": "AS209242",
+  "net": "CLOUDFLARESPECTRUM"
+ },
  "104.171.133.209": {
   "first": "2026-11-05",
   "last": "2026-11-06",
@@ -71,7 +78,7 @@
  },
  "145.223.68.58": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "FR",
   "asn": "AS215311",
   "net": "REGXA-CLOUD"
@@ -103,6 +110,13 @@
   "country": "VN",
   "asn": "AS131392",
   "net": "RUNSYSTEM-AS-VN"
+ },
+ "151.101.21.242": {
+  "first": "2026-11-06",
+  "last": "2026-11-06",
+  "country": "US",
+  "asn": "AS54113",
+  "net": "FASTLY"
  },
  "151.241.226.201": {
   "first": "2026-11-05",
@@ -192,6 +206,13 @@
   "first": "2026-11-05",
   "last": "2026-11-06",
   "country": "GB",
+  "asn": "AS209242",
+  "net": "CLOUDFLARESPECTRUM"
+ },
+ "185.193.29.123": {
+  "first": "2026-11-06",
+  "last": "2026-11-06",
+  "country": "FR",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
  },
@@ -442,10 +463,17 @@
  },
  "72.56.4.84": {
   "first": "2026-11-05",
-  "last": "2026-11-05",
+  "last": "2026-11-06",
   "country": "RU",
   "asn": "AS9123",
   "net": "TimeWeb-AS"
+ },
+ "77.90.2.130": {
+  "first": "2026-11-06",
+  "last": "2026-11-06",
+  "country": "DE",
+  "asn": "AS48314",
+  "net": "IP-PROJECTS"
  },
  "79.141.164.124": {
   "first": "2026-11-05",
@@ -502,6 +530,13 @@
   "country": "DE",
   "asn": "AS214902",
   "net": "PFWEBSOLUTIONS"
+ },
+ "92.53.189.40": {
+  "first": "2026-11-06",
+  "last": "2026-11-06",
+  "country": "CA",
+  "asn": "AS209242",
+  "net": "CLOUDFLARESPECTRUM"
  },
  "94.183.234.245": {
   "first": "2026-11-05",
