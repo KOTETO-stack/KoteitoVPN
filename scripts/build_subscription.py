@@ -31,8 +31,9 @@ build_subscription.py
  - MOBILE_QUOTA = 0 выключает добавку.
 
 Дополнительные сигналы (scripts/net_signals.py, выключаются SIGNALS_ENABLED = False):
- - списки IP, заблокированных РКН (antifilter): штраф в сортировке, такие серверы в
-   мобильную добавку не берутся (MOBILE_EXCLUDE_RKN);
+ - списки IP, заблокированных РКН (antifilter): такие серверы в подписки не попадают совсем
+   (если сервер не замерен зелёным на мобильной сети и списки не выглядят слишком широкими,
+   см. RKN_EXCLUDE и RKN_EXCLUDE_MAX_SHARE в net_signals.py);
  - сети хостеров с ограничением ТСПУ "16 КБ" (data/tspu_asn.json): мягкий штраф;
  - приоритет стран из данных (ответ с российских узлов, доля в списках РКН и в
    ТСПУ-сетях): бонус или штраф до 30 мс, отчёт в output/country_priority.json;
@@ -682,6 +683,34 @@ def build_signals(configs, probe):
         return None
 
 
+def drop_rkn_blocked(configs, sig):
+    """Убирает из пула серверы, чьи IP в списках РКН: они из России не подключаются.
+    Если списки слишком широкие (см. RKN_EXCLUDE_MAX_SHARE в net_signals.py) или сигналов нет,
+    пул не меняется."""
+    if sig is None:
+        return configs
+    try:
+        keep, dropped = sig.drop_blocked(configs)
+    except Exception as e:
+        print("Исключение серверов из списков РКН пропущено из-за ошибки: %s" % e)
+        return configs
+    if not dropped:
+        print("Исключено серверов из списков РКН: 0.")
+        return configs
+    print("Исключено серверов из списков РКН: %d (в пуле осталось %d)." % (len(dropped), len(keep)))
+    print("::group::Исключённые серверы (название | адрес | сеть)")
+    for c in dropped:
+        try:
+            e = sig.evaluate(c)
+            print("%s | %s:%s | %s" % (c.get("display_name") or c.get("remark") or "VPN",
+                                       e.get("ip") or c.get("host"), c.get("port"),
+                                       ("AS%s" % e["asn"]) if e.get("asn") else "?"))
+        except Exception:
+            pass
+    print("::endgroup::")
+    return keep
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(IN_FILE, "r", encoding="utf-8") as f:
@@ -692,6 +721,7 @@ def main():
     now = datetime.now(timezone.utc)
     print_ooni_operators()
     sig = build_signals(configs, probe)
+    configs = drop_rkn_blocked(configs, sig)
     sort_key = make_sort_key(reports, now, probe, sig)
 
     count = max(1, SUBSCRIPTION_COUNT)
