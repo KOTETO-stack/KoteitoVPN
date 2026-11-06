@@ -1,0 +1,63 @@
+name: LTE Bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lte-bot
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Process messages
+        env:
+          LTE_BOT_TOKEN: ${{ secrets.LTE_BOT_TOKEN }}
+          LTE_BOT_ALLOWED: ${{ secrets.LTE_BOT_ALLOWED || secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/lte_bot.py process
+
+      - name: Commit results
+        run: |
+          git config user.name "koteito-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add lte_results.txt data/lte_bot_state.json data/lte_results_archive.txt 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Нет изменений"
+            exit 0
+          fi
+          git commit -m "lte-bot: замеры"
+          ok=0
+          for i in 1 2 3; do
+            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$ok" != "1" ]; then
+            echo "push не удался, ответы не отправляю, сообщения обработаются при следующем запуске"
+            exit 1
+          fi
+
+      - name: Send replies
+        if: success()
+        env:
+          LTE_BOT_TOKEN: ${{ secrets.LTE_BOT_TOKEN }}
+        run: python scripts/lte_bot.py send
