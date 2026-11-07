@@ -1,5 +1,5 @@
 {
- "updated_utc": "2026-11-07T07:12:50",
+ "updated_utc": "2026-11-07T14:04:54",
  "limits": {
   "SUBSCRIPTION_COUNT": 2,
   "MAX_SERVERS": 200,
@@ -131,33 +131,41 @@
   "sources": {
    "antifilter_allyouneed": {
     "entries": 17164,
-    "file_updated_utc": "2026-11-07 00:58"
+    "file_updated_utc": "2026-11-07 14:04"
    },
    "antifilter_community": {
-    "entries": 931,
-    "file_updated_utc": "2026-11-07 00:58"
+    "entries": 934,
+    "file_updated_utc": "2026-11-07 14:04"
    }
   },
-  "ranges": 16620,
-  "addresses": 5966559,
-  "pool_total": 785,
-  "pool_flagged": 67,
+  "ranges": 16624,
+  "addresses": 5966562,
+  "pool_total": 761,
+  "pool_flagged": 70,
   "flagged": [
    {
-    "ip": "185.162.229.40",
-    "host": "185.162.229.40",
-    "port": 8880,
-    "country": "GB",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
-   },
-   {
-    "ip": "154.197.64.30",
-    "host": "154.197.64.30",
-    "port": 8880,
+    "ip": "103.133.1.160",
+    "host": "103.133.1.160",
+    "port": 80,
     "country": "US",
     "asn": "AS209242",
     "net_name": "CLOUDFLARESPECTRUM"
+   },
+   {
+    "ip": "45.130.125.190",
+    "host": "45.130.125.190",
+    "port": 443,
+    "country": "SC",
+    "asn": "AS13335",
+    "net_name": "CLOUDFLARENET"
+   },
+   {
+    "ip": "104.168.132.109",
+    "host": "104.168.132.109",
+    "port": 443,
+    "country": "US",
+    "asn": "AS54290",
+    "net_name": "HOSTWINDS"
    },
    {
     "ip": "45.130.125.50",
@@ -166,62 +174,6 @@
     "country": "SC",
     "asn": "AS13335",
     "net_name": "CLOUDFLARENET"
-   },
-   {
-    "ip": "45.12.30.30",
-    "host": "45.12.30.30",
-    "port": 8880,
-    "country": "GB",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
-   },
-   {
-    "ip": "185.162.230.30",
-    "host": "185.162.230.30",
-    "port": 8880,
-    "country": "GB",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
-   },
-   {
-    "ip": "154.218.15.50",
-    "host": "154.218.15.50",
-    "port": 8880,
-    "country": "DE",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
-   },
-   {
-    "ip": "88.216.67.30",
-    "host": "88.216.67.30",
-    "port": 8880,
-    "country": "CW",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
-   },
-   {
-    "ip": "185.193.29.40",
-    "host": "185.193.29.40",
-    "port": 8880,
-    "country": "FR",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
-   },
-   {
-    "ip": "154.197.75.30",
-    "host": "154.197.75.30",
-    "port": 8880,
-    "country": "DE",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
-   },
-   {
-    "ip": "103.133.1.160",
-    "host": "103.133.1.160",
-    "port": 80,
-    "country": "US",
-    "asn": "AS209242",
-    "net_name": "CLOUDFLARESPECTRUM"
    },
    {
     "ip": "62.72.166.30",
@@ -240,12 +192,36 @@
     "net_name": "CLOUDFLARESPECTRUM"
    },
    {
-    "ip": "45.130.125.190",
-    "host": "45.130.125.190",
-    "port": 443,
-    "country": "SC",
-    "asn": "AS13335",
-    "net_name": "CLOUDFLARENET"
+    "ip": "45.12.30.30",
+    "host": "45.12.30.30",
+    "port": 8880,
+    "country": "GB",
+    "asn": "AS209242",
+    "net_name": "CLOUDFLARESPECTRUM"
+   },
+   {
+    "ip": "185.162.229.40",
+    "host": "185.162.229.40",
+    "port": 8880,
+    "country": "GB",
+    "asn": "AS209242",
+    "net_name": "CLOUDFLARESPECTRUM"
+   },
+   {
+    "ip": "185.162.230.30",
+    "host": "185.162.230.30",
+    "port": 8880,
+    "country": "GB",
+    "asn": "AS209242",
+    "net_name": "CLOUDFLARESPECTRUM"
+   },
+   {
+    "ip": "88.216.67.30",
+    "host": "88.216.67.30",
+    "port": 8880,
+    "country": "CW",
+    "asn": "AS209242",
+    "net_name": "CLOUDFLARESPECTRUM"
    },
    {
     "ip": "104.239.72.227",
@@ -264,6 +240,14 @@
     "net_name": "CLOUDFLARESPECTRUM"
    },
    {
+    "ip": "185.193.29.40",
+    "host": "185.193.29.40",
+    "port": 8880,
+    "country": "FR",
+    "asn": "AS209242",
+    "net_name": "CLOUDFLARESPECTRUM"
+   },
+   {
     "ip": "185.159.247.30",
     "host": "185.159.247.30",
     "port": 8880,
@@ -272,40 +256,40 @@
     "net_name": "CLOUDFLARESPECTRUM"
    },
    {
-    "ip": "141.193.213.21",
-    "host": "141.193.213.21",
-    "port": 8443,
+    "ip": "154.197.75.30",
+    "host": "154.197.75.30",
+    "port": 8880,
+    "country": "DE",
+    "asn": "AS209242",
+    "net_name": "CLOUDFLARESPECTRUM"
+   },
+   {
+    "ip": "208.103.161.16",
+    "host": "208.103.161.16",
+    "port": 2096,
+    "country": "US",
+    "asn": "AS33191",
+    "net_name": "NOTION-WEB"
+   },
+   {
+    "ip": "154.197.64.30",
+    "host": "154.197.64.30",
+    "port": 8880,
     "country": "US",
     "asn": "AS209242",
     "net_name": "CLOUDFLARESPECTRUM"
    },
    {
-    "ip": "209.200.246.148",
-    "host": "209.200.246.148",
-    "port": 443,
-    "country": "CA",
-    "asn": "AS215311",
-    "net_name": "REGXA-CLOUD"
-   },
-   {
-    "ip": "172.235.51.71",
-    "host": "172.235.51.71",
+    "ip": "172.236.227.60",
+    "host": "172.236.227.60",
     "port": 443,
     "country": "US",
     "asn": "AS63949",
     "net_name": "AKAMAI-LINODE-AP"
    },
    {
-    "ip": "104.168.132.109",
-    "host": "104.168.132.109",
-    "port": 443,
-    "country": "US",
-    "asn": "AS54290",
-    "net_name": "HOSTWINDS"
-   },
-   {
-    "ip": "172.236.227.60",
-    "host": "172.236.227.60",
+    "ip": "172.235.51.71",
+    "host": "172.235.51.71",
     "port": 443,
     "country": "US",
     "asn": "AS63949",
@@ -320,44 +304,12 @@
     "net_name": "BYTEVIRTLLC"
    },
    {
-    "ip": "83.147.18.75",
-    "host": "83.147.18.75",
+    "ip": "209.200.246.148",
+    "host": "209.200.246.148",
     "port": 443,
-    "country": "GB",
+    "country": "CA",
     "asn": "AS215311",
     "net_name": "REGXA-CLOUD"
-   },
-   {
-    "ip": "83.147.18.3",
-    "host": "83.147.18.3",
-    "port": 443,
-    "country": "GB",
-    "asn": "AS215311",
-    "net_name": "REGXA-CLOUD"
-   },
-   {
-    "ip": "188.253.26.143",
-    "host": "188.253.26.143",
-    "port": 443,
-    "country": "NL",
-    "asn": "AS42532",
-    "net_name": "VEESP-LV-AS"
-   },
-   {
-    "ip": "79.141.164.124",
-    "host": "79.141.164.124",
-    "port": 443,
-    "country": "NL",
-    "asn": "AS59711",
-    "net_name": "HZ-EU-AS"
-   },
-   {
-    "ip": "79.141.164.83",
-    "host": "79.141.164.83",
-    "port": 443,
-    "country": "NL",
-    "asn": "AS59711",
-    "net_name": "HZ-EU-AS"
    },
    {
     "ip": "5.253.189.238",
@@ -376,36 +328,20 @@
     "net_name": "SCALAXY-AS"
    },
    {
-    "ip": "130.12.242.106",
-    "host": "130.12.242.106",
+    "ip": "80.71.227.102",
+    "host": "80.71.227.102",
     "port": 443,
     "country": "NL",
-    "asn": "AS214716",
-    "net_name": "WEYRO"
+    "asn": "AS198037",
+    "net_name": "SPACECORE"
    },
    {
-    "ip": "5.230.219.109",
-    "host": "5.230.219.109",
-    "port": 8444,
-    "country": "DE",
-    "asn": "AS12586",
-    "net_name": "ASGHOSTNET"
-   },
-   {
-    "ip": "5.252.179.15",
-    "host": "5.252.179.15",
+    "ip": "188.253.26.143",
+    "host": "188.253.26.143",
     "port": 443,
-    "country": "DE",
-    "asn": "AS39798",
-    "net_name": "MivoCloud"
-   },
-   {
-    "ip": "82.118.19.153",
-    "host": "82.118.19.153",
-    "port": 443,
-    "country": "DE",
-    "asn": "AS21100",
-    "net_name": "ITLDC-EU"
+    "country": "NL",
+    "asn": "AS42532",
+    "net_name": "VEESP-LV-AS"
    },
    {
     "ip": "152.42.130.189",
@@ -416,6 +352,38 @@
     "net_name": "DIGITALOCEAN-ASN"
    },
    {
+    "ip": "79.141.164.83",
+    "host": "79.141.164.83",
+    "port": 443,
+    "country": "NL",
+    "asn": "AS59711",
+    "net_name": "HZ-EU-AS"
+   },
+   {
+    "ip": "83.147.18.75",
+    "host": "83.147.18.75",
+    "port": 443,
+    "country": "GB",
+    "asn": "AS215311",
+    "net_name": "REGXA-CLOUD"
+   },
+   {
+    "ip": "130.12.242.106",
+    "host": "130.12.242.106",
+    "port": 443,
+    "country": "NL",
+    "asn": "AS214716",
+    "net_name": "WEYRO"
+   },
+   {
+    "ip": "5.252.179.15",
+    "host": "5.252.179.15",
+    "port": 443,
+    "country": "DE",
+    "asn": "AS39798",
+    "net_name": "MivoCloud"
+   },
+   {
     "ip": "144.31.140.125",
     "host": "144.31.140.125",
     "port": 8443,
@@ -424,52 +392,20 @@
     "net_name": "XORA-AS"
    },
    {
-    "ip": "208.69.78.158",
-    "host": "208.69.78.158",
+    "ip": "82.118.19.153",
+    "host": "82.118.19.153",
     "port": 443,
-    "country": "CH",
-    "asn": "AS63023",
-    "net_name": "AS-GLOBALTELEHOST"
+    "country": "DE",
+    "asn": "AS21100",
+    "net_name": "ITLDC-EU"
    },
    {
-    "ip": "45.192.12.106",
-    "host": "45.192.12.106",
-    "port": 443,
-    "country": "PL",
-    "asn": "AS197574",
-    "net_name": "EXPRESSHOST"
-   },
-   {
-    "ip": "213.152.165.195",
-    "host": "213.152.165.195",
-    "port": 2094,
-    "country": "NL",
-    "asn": "AS49453",
-    "net_name": "GLOBALLAYER"
-   },
-   {
-    "ip": "195.123.245.241",
-    "host": "195.123.245.241",
-    "port": 443,
-    "country": "CZ",
-    "asn": "AS204957",
-    "net_name": "GREENFLOID-AS"
-   },
-   {
-    "ip": "213.152.165.199",
-    "host": "213.152.165.199",
-    "port": 2094,
-    "country": "NL",
-    "asn": "AS49453",
-    "net_name": "GLOBALLAYER"
-   },
-   {
-    "ip": "208.69.78.29",
-    "host": "208.69.78.29",
-    "port": 443,
-    "country": "CH",
-    "asn": "AS63023",
-    "net_name": "AS-GLOBALTELEHOST"
+    "ip": "152.228.139.33",
+    "host": "152.228.139.33",
+    "port": 35108,
+    "country": "FR",
+    "asn": "AS16276",
+    "net_name": "OVH"
    },
    {
     "ip": "212.102.38.25",
@@ -478,14 +414,6 @@
     "country": "CZ",
     "asn": "AS60068",
     "net_name": "CDN77"
-   },
-   {
-    "ip": "208.69.78.208",
-    "host": "208.69.78.208",
-    "port": 443,
-    "country": "CH",
-    "asn": "AS63023",
-    "net_name": "AS-GLOBALTELEHOST"
    },
    {
     "ip": "208.69.78.60",
@@ -504,8 +432,16 @@
     "net_name": "ITLDC-EU"
    },
    {
-    "ip": "208.69.78.33",
-    "host": "208.69.78.33",
+    "ip": "208.69.78.208",
+    "host": "208.69.78.208",
+    "port": 443,
+    "country": "CH",
+    "asn": "AS63023",
+    "net_name": "AS-GLOBALTELEHOST"
+   },
+   {
+    "ip": "208.69.78.29",
+    "host": "208.69.78.29",
     "port": 443,
     "country": "CH",
     "asn": "AS63023",
@@ -520,6 +456,54 @@
     "net_name": "GREENFLOID-AS"
    },
    {
+    "ip": "213.152.165.206",
+    "host": "213.152.165.206",
+    "port": 2094,
+    "country": "NL",
+    "asn": "AS49453",
+    "net_name": "GLOBALLAYER"
+   },
+   {
+    "ip": "213.152.165.194",
+    "host": "213.152.165.194",
+    "port": 2094,
+    "country": "NL",
+    "asn": "AS49453",
+    "net_name": "GLOBALLAYER"
+   },
+   {
+    "ip": "213.152.165.199",
+    "host": "213.152.165.199",
+    "port": 2094,
+    "country": "NL",
+    "asn": "AS49453",
+    "net_name": "GLOBALLAYER"
+   },
+   {
+    "ip": "213.152.165.205",
+    "host": "213.152.165.205",
+    "port": 2094,
+    "country": "NL",
+    "asn": "AS49453",
+    "net_name": "GLOBALLAYER"
+   },
+   {
+    "ip": "213.152.165.195",
+    "host": "213.152.165.195",
+    "port": 2094,
+    "country": "NL",
+    "asn": "AS49453",
+    "net_name": "GLOBALLAYER"
+   },
+   {
+    "ip": "195.123.245.241",
+    "host": "195.123.245.241",
+    "port": 443,
+    "country": "CZ",
+    "asn": "AS204957",
+    "net_name": "GREENFLOID-AS"
+   },
+   {
     "ip": "94.183.234.245",
     "host": "94.183.234.245",
     "port": 443,
@@ -528,12 +512,60 @@
     "net_name": "AS56971"
    },
    {
+    "ip": "208.69.78.158",
+    "host": "208.69.78.158",
+    "port": 443,
+    "country": "CH",
+    "asn": "AS63023",
+    "net_name": "AS-GLOBALTELEHOST"
+   },
+   {
     "ip": "46.28.71.247",
     "host": "46.28.71.247",
     "port": 443,
     "country": "ES",
     "asn": "AS8254",
     "net_name": "ROUTE95"
+   },
+   {
+    "ip": "208.69.78.217",
+    "host": "208.69.78.217",
+    "port": 2053,
+    "country": "CH",
+    "asn": "AS63023",
+    "net_name": "AS-GLOBALTELEHOST"
+   },
+   {
+    "ip": "45.192.12.106",
+    "host": "45.192.12.106",
+    "port": 443,
+    "country": "PL",
+    "asn": "AS197574",
+    "net_name": "EXPRESSHOST"
+   },
+   {
+    "ip": "195.123.226.21",
+    "host": "195.123.226.21",
+    "port": 443,
+    "country": "BG",
+    "asn": "AS59729",
+    "net_name": "ITL-BG"
+   },
+   {
+    "ip": "217.144.188.185",
+    "host": "217.144.188.185",
+    "port": 443,
+    "country": "FI",
+    "asn": "AS210644",
+    "net_name": "AEZA-AS"
+   },
+   {
+    "ip": "87.199.205.28",
+    "host": "87.199.205.28",
+    "port": 443,
+    "country": "NL",
+    "asn": "AS216071",
+    "net_name": "VDSINA"
    },
    {
     "ip": "216.238.104.154",
@@ -560,28 +592,12 @@
     "net_name": "HOSTKEY-AS"
    },
    {
-    "ip": "217.144.188.185",
-    "host": "217.144.188.185",
-    "port": 443,
-    "country": "FI",
-    "asn": "AS210644",
-    "net_name": "AEZA-AS"
-   },
-   {
-    "ip": "104.171.133.209",
-    "host": "104.171.133.209",
+    "ip": "45.139.27.9",
+    "host": "45.139.27.9",
     "port": 443,
     "country": "RU",
-    "asn": "AS9123",
-    "net_name": "TimeWeb-AS"
-   },
-   {
-    "ip": "201.24.121.243",
-    "host": "201.24.121.243",
-    "port": 443,
-    "country": "RU",
-    "asn": "AS9123",
-    "net_name": "TimeWeb-AS"
+    "asn": "AS34959",
+    "net_name": "PROCLOUD"
    },
    {
     "ip": "72.56.38.83",
@@ -600,36 +616,28 @@
     "net_name": "TimeWeb-AS"
    },
    {
+    "ip": "201.24.121.243",
+    "host": "201.24.121.243",
+    "port": 443,
+    "country": "RU",
+    "asn": "AS9123",
+    "net_name": "TimeWeb-AS"
+   },
+   {
+    "ip": "104.171.133.209",
+    "host": "104.171.133.209",
+    "port": 443,
+    "country": "RU",
+    "asn": "AS9123",
+    "net_name": "TimeWeb-AS"
+   },
+   {
     "ip": "213.152.165.200",
     "host": "213.152.165.200",
     "port": 2095,
     "country": "NL",
     "asn": "AS49453",
     "net_name": "GLOBALLAYER"
-   },
-   {
-    "ip": "45.139.27.9",
-    "host": "45.139.27.9",
-    "port": 443,
-    "country": "RU",
-    "asn": "AS34959",
-    "net_name": "PROCLOUD"
-   },
-   {
-    "ip": "201.51.29.153",
-    "host": "201.51.29.153",
-    "port": 443,
-    "country": "RU",
-    "asn": "AS57494",
-    "net_name": "ADMAN-AS"
-   },
-   {
-    "ip": "5.34.177.164",
-    "host": "5.34.177.164",
-    "port": 443,
-    "country": "SG",
-    "asn": "AS204957",
-    "net_name": "GREENFLOID-AS"
    },
    {
     "ip": "150.95.109.109",
@@ -640,20 +648,36 @@
     "net_name": "RUNSYSTEM-AS-VN"
    },
    {
-    "ip": "80.71.227.102",
-    "host": "nl5.japancase.site",
+    "ip": "5.34.177.164",
+    "host": "5.34.177.164",
     "port": 443,
-    "country": "NL",
-    "asn": "AS198037",
-    "net_name": "SPACECORE"
+    "country": "SG",
+    "asn": "AS204957",
+    "net_name": "GREENFLOID-AS"
    },
    {
-    "ip": "208.69.78.217",
-    "host": "208.69.78.217",
-    "port": 2053,
+    "ip": "201.51.29.153",
+    "host": "201.51.29.153",
+    "port": 443,
+    "country": "RU",
+    "asn": "AS57494",
+    "net_name": "ADMAN-AS"
+   },
+   {
+    "ip": "54.46.46.35",
+    "host": "sclass-00.catcat321.com",
+    "port": 20123,
+    "country": "HK",
+    "asn": "AS16509",
+    "net_name": "AMAZON-02"
+   },
+   {
+    "ip": "46.19.138.214",
+    "host": "prvtch.titun.su",
+    "port": 443,
     "country": "CH",
-    "asn": "AS63023",
-    "net_name": "AS-GLOBALTELEHOST"
+    "asn": "AS51852",
+    "net_name": "PLI-AS"
    },
    {
     "ip": "62.210.147.2",
@@ -680,94 +704,94 @@
     "net_name": "HOSTKEY-AS"
    }
   ],
-  "list_lines": 17767
+  "list_lines": 17771
  },
  "country_priority": {
-  "updated_utc": "2026-11-07T07:12:49",
-  "rkn_ranges": 16620,
+  "updated_utc": "2026-11-07T14:04:54",
+  "rkn_ranges": 16624,
   "rkn_penalty_ms": 250,
   "tspu_asn_count": 10,
   "countries": {
-   "PL": {
-    "servers": 23,
-    "probed": 6,
-    "probe_mean": 0.75,
-    "rkn_share": 0.087,
-    "tspu_share": 0.0,
-    "quality": 0.833,
-    "bonus_ms": 12.3
+   "CA": {
+    "servers": 160,
+    "probed": 26,
+    "probe_mean": 1.0,
+    "rkn_share": 0.006,
+    "tspu_share": 0.95,
+    "quality": 0.809,
+    "bonus_ms": 8.0
    },
    "NL": {
-    "servers": 82,
-    "probed": 15,
-    "probe_mean": 0.867,
-    "rkn_share": 0.159,
-    "tspu_share": 0.451,
-    "quality": 0.798,
-    "bonus_ms": 8.2
+    "servers": 89,
+    "probed": 17,
+    "probe_mean": 0.882,
+    "rkn_share": 0.18,
+    "tspu_share": 0.449,
+    "quality": 0.804,
+    "bonus_ms": 7.4
    },
-   "CA": {
-    "servers": 170,
-    "probed": 36,
-    "probe_mean": 0.972,
-    "rkn_share": 0.006,
-    "tspu_share": 0.947,
-    "quality": 0.793,
-    "bonus_ms": 7.5
+   "DE": {
+    "servers": 46,
+    "probed": 11,
+    "probe_mean": 0.773,
+    "rkn_share": 0.13,
+    "tspu_share": 0.283,
+    "quality": 0.781,
+    "bonus_ms": 4.7
+   },
+   "US": {
+    "servers": 145,
+    "probed": 19,
+    "probe_mean": 0.684,
+    "rkn_share": 0.055,
+    "tspu_share": 0.172,
+    "quality": 0.765,
+    "bonus_ms": 2.8
+   },
+   "SE": {
+    "servers": 10,
+    "probed": 4,
+    "probe_mean": 0.5,
+    "rkn_share": 0.0,
+    "tspu_share": 0.0,
+    "quality": 0.76,
+    "bonus_ms": 2.2
+   },
+   "BY": {
+    "servers": 9,
+    "probed": 2,
+    "probe_mean": 1.0,
+    "rkn_share": 0.0,
+    "tspu_share": 0.0,
+    "quality": 0.76,
+    "bonus_ms": 2.2
+   },
+   "HK": {
+    "servers": 15,
+    "probed": 3,
+    "probe_mean": 0.833,
+    "rkn_share": 0.067,
+    "tspu_share": 0.0,
+    "quality": 0.747,
+    "bonus_ms": 0.6
    },
    "JP": {
     "servers": 17,
     "probed": 7,
-    "probe_mean": 0.643,
+    "probe_mean": 0.571,
     "rkn_share": 0.0,
     "tspu_share": 0.0,
-    "quality": 0.786,
-    "bonus_ms": 6.7
+    "quality": 0.743,
+    "bonus_ms": 0.1
    },
-   "SE": {
-    "servers": 10,
-    "probed": 3,
-    "probe_mean": 0.667,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": 0.78,
-    "bonus_ms": 6.0
-   },
-   "BY": {
-    "servers": 10,
-    "probed": 3,
-    "probe_mean": 1.0,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": 0.78,
-    "bonus_ms": 6.0
-   },
-   "HK": {
-    "servers": 16,
-    "probed": 3,
-    "probe_mean": 0.833,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": 0.78,
-    "bonus_ms": 6.0
-   },
-   "EE": {
-    "servers": 9,
-    "probed": 3,
-    "probe_mean": 0.833,
-    "rkn_share": 0.111,
-    "tspu_share": 0.111,
-    "quality": 0.736,
-    "bonus_ms": 0.7
-   },
-   "US": {
-    "servers": 146,
-    "probed": 19,
-    "probe_mean": 0.632,
-    "rkn_share": 0.055,
-    "tspu_share": 0.192,
-    "quality": 0.73,
-    "bonus_ms": -0.0
+   "CY": {
+    "servers": 2,
+    "probed": 0,
+    "probe_mean": null,
+    "rkn_share": 0.5,
+    "tspu_share": 1.0,
+    "quality": null,
+    "bonus_ms": 0.0
    },
    "SC": {
     "servers": 2,
@@ -778,12 +802,12 @@
     "quality": null,
     "bonus_ms": 0.0
    },
-   "AE": {
-    "servers": 3,
-    "probed": 1,
-    "probe_mean": 1.0,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
+   "BG": {
+    "servers": 2,
+    "probed": 0,
+    "probe_mean": null,
+    "rkn_share": 0.5,
+    "tspu_share": 0.5,
     "quality": null,
     "bonus_ms": 0.0
    },
@@ -792,24 +816,6 @@
     "probed": 0,
     "probe_mean": null,
     "rkn_share": 1.0,
-    "tspu_share": 1.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "BG": {
-    "servers": 3,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.0,
-    "tspu_share": 0.667,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "CY": {
-    "servers": 2,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.5,
     "tspu_share": 1.0,
     "quality": null,
     "bonus_ms": 0.0
@@ -834,10 +840,19 @@
    },
    "VG": {
     "servers": 1,
-    "probed": 0,
-    "probe_mean": null,
+    "probed": 1,
+    "probe_mean": 1.0,
     "rkn_share": 0.0,
     "tspu_share": 1.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "EE": {
+    "servers": 7,
+    "probed": 4,
+    "probe_mean": 0.5,
+    "rkn_share": 0.143,
+    "tspu_share": 0.143,
     "quality": null,
     "bonus_ms": 0.0
    },
@@ -852,26 +867,17 @@
    },
    "ES": {
     "servers": 5,
-    "probed": 3,
-    "probe_mean": 0.333,
+    "probed": 1,
+    "probe_mean": 0.0,
     "rkn_share": 0.2,
     "tspu_share": 0.0,
     "quality": null,
     "bonus_ms": 0.0
    },
-   "IT": {
+   "DK": {
     "servers": 2,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.5,
-    "tspu_share": 0.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "HU": {
-    "servers": 1,
     "probed": 1,
-    "probe_mean": 0.5,
+    "probe_mean": 1.0,
     "rkn_share": 0.0,
     "tspu_share": 0.0,
     "quality": null,
@@ -886,10 +892,19 @@
     "quality": null,
     "bonus_ms": 0.0
    },
-   "DK": {
+   "IT": {
     "servers": 2,
     "probed": 1,
-    "probe_mean": 1.0,
+    "probe_mean": 0.5,
+    "rkn_share": 0.5,
+    "tspu_share": 0.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "AU": {
+    "servers": 2,
+    "probed": 0,
+    "probe_mean": null,
     "rkn_share": 0.0,
     "tspu_share": 0.0,
     "quality": null,
@@ -913,31 +928,22 @@
     "quality": null,
     "bonus_ms": 0.0
    },
-   "NG": {
+   "HU": {
     "servers": 1,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "AT": {
-    "servers": 2,
     "probed": 1,
-    "probe_mean": 1.0,
+    "probe_mean": 0.5,
     "rkn_share": 0.0,
     "tspu_share": 0.0,
     "quality": null,
     "bonus_ms": 0.0
    },
-   "TR": {
-    "servers": 8,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.25,
+   "TW": {
+    "servers": 4,
+    "probed": 2,
+    "probe_mean": 0.75,
+    "rkn_share": 0.0,
     "tspu_share": 0.0,
-    "quality": 0.73,
+    "quality": null,
     "bonus_ms": 0.0
    },
    "IL": {
@@ -945,6 +951,33 @@
     "probed": 0,
     "probe_mean": null,
     "rkn_share": 0.0,
+    "tspu_share": 0.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "ID": {
+    "servers": 1,
+    "probed": 1,
+    "probe_mean": 1.0,
+    "rkn_share": 0.0,
+    "tspu_share": 0.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "BR": {
+    "servers": 2,
+    "probed": 1,
+    "probe_mean": 1.0,
+    "rkn_share": 0.5,
+    "tspu_share": 0.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "TR": {
+    "servers": 6,
+    "probed": 1,
+    "probe_mean": 0.5,
+    "rkn_share": 0.333,
     "tspu_share": 0.0,
     "quality": null,
     "bonus_ms": 0.0
@@ -958,7 +991,25 @@
     "quality": null,
     "bonus_ms": 0.0
    },
-   "BR": {
+   "AT": {
+    "servers": 2,
+    "probed": 2,
+    "probe_mean": 1.0,
+    "rkn_share": 0.0,
+    "tspu_share": 0.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "TH": {
+    "servers": 1,
+    "probed": 0,
+    "probe_mean": null,
+    "rkn_share": 0.0,
+    "tspu_share": 0.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "VN": {
     "servers": 2,
     "probed": 1,
     "probe_mean": 1.0,
@@ -967,10 +1018,10 @@
     "quality": null,
     "bonus_ms": 0.0
    },
-   "AL": {
+   "PH": {
     "servers": 1,
-    "probed": 1,
-    "probe_mean": 0.0,
+    "probed": 0,
+    "probe_mean": null,
     "rkn_share": 0.0,
     "tspu_share": 0.0,
     "quality": null,
@@ -978,14 +1029,23 @@
    },
    "KZ": {
     "servers": 5,
-    "probed": 2,
-    "probe_mean": 0.0,
+    "probed": 3,
+    "probe_mean": 0.667,
     "rkn_share": 0.0,
     "tspu_share": 0.0,
     "quality": null,
     "bonus_ms": 0.0
    },
-   "AU": {
+   "IN": {
+    "servers": 4,
+    "probed": 0,
+    "probe_mean": null,
+    "rkn_share": 0.0,
+    "tspu_share": 0.0,
+    "quality": null,
+    "bonus_ms": 0.0
+   },
+   "AE": {
     "servers": 2,
     "probed": 0,
     "probe_mean": null,
@@ -1003,52 +1063,7 @@
     "quality": null,
     "bonus_ms": 0.0
    },
-   "IN": {
-    "servers": 4,
-    "probed": 1,
-    "probe_mean": 0.5,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "TW": {
-    "servers": 4,
-    "probed": 1,
-    "probe_mean": 1.0,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "ID": {
-    "servers": 1,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "TH": {
-    "servers": 1,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.0,
-    "tspu_share": 0.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "VN": {
-    "servers": 2,
-    "probed": 0,
-    "probe_mean": null,
-    "rkn_share": 0.5,
-    "tspu_share": 0.0,
-    "quality": null,
-    "bonus_ms": 0.0
-   },
-   "PH": {
+   "NG": {
     "servers": 1,
     "probed": 0,
     "probe_mean": null,
@@ -1066,50 +1081,59 @@
     "quality": null,
     "bonus_ms": 0.0
    },
-   "RU": {
-    "servers": 17,
-    "probed": 2,
-    "probe_mean": 0.75,
-    "rkn_share": 0.353,
+   "PL": {
+    "servers": 21,
+    "probed": 3,
+    "probe_mean": 1.0,
+    "rkn_share": 0.095,
     "tspu_share": 0.0,
-    "quality": 0.71,
-    "bonus_ms": -2.4
-   },
-   "FI": {
-    "servers": 11,
-    "probed": 4,
-    "probe_mean": 0.625,
-    "rkn_share": 0.091,
-    "tspu_share": 0.273,
-    "quality": 0.708,
-    "bonus_ms": -2.7
-   },
-   "DE": {
-    "servers": 53,
-    "probed": 11,
-    "probe_mean": 0.636,
-    "rkn_share": 0.151,
-    "tspu_share": 0.302,
-    "quality": 0.691,
-    "bonus_ms": -4.7
+    "quality": 0.741,
+    "bonus_ms": -0.1
    },
    "KR": {
-    "servers": 15,
-    "probed": 5,
-    "probe_mean": 0.4,
+    "servers": 14,
+    "probed": 6,
+    "probe_mean": 0.5,
     "rkn_share": 0.0,
     "tspu_share": 0.0,
-    "quality": 0.64,
-    "bonus_ms": -10.8
+    "quality": 0.7,
+    "bonus_ms": -5.0
+   },
+   "RU": {
+    "servers": 18,
+    "probed": 0,
+    "probe_mean": null,
+    "rkn_share": 0.333,
+    "tspu_share": 0.0,
+    "quality": 0.693,
+    "bonus_ms": -5.8
+   },
+   "FI": {
+    "servers": 10,
+    "probed": 4,
+    "probe_mean": 0.625,
+    "rkn_share": 0.1,
+    "tspu_share": 0.3,
+    "quality": 0.68,
+    "bonus_ms": -7.4
    },
    "SG": {
     "servers": 33,
-    "probed": 17,
-    "probe_mean": 0.412,
+    "probed": 13,
+    "probe_mean": 0.462,
     "rkn_share": 0.03,
     "tspu_share": 0.091,
-    "quality": 0.623,
-    "bonus_ms": -12.9
+    "quality": 0.653,
+    "bonus_ms": -10.7
+   },
+   "FR": {
+    "servers": 31,
+    "probed": 5,
+    "probe_mean": 0.6,
+    "rkn_share": 0.097,
+    "tspu_share": 0.484,
+    "quality": 0.644,
+    "bonus_ms": -11.8
    },
    "CH": {
     "servers": 43,
@@ -1117,25 +1141,16 @@
     "probe_mean": 1.0,
     "rkn_share": 0.907,
     "tspu_share": 0.0,
-    "quality": 0.599,
-    "bonus_ms": -15.7
-   },
-   "FR": {
-    "servers": 30,
-    "probed": 9,
-    "probe_mean": 0.5,
-    "rkn_share": 0.067,
-    "tspu_share": 0.467,
-    "quality": 0.593,
-    "bonus_ms": -16.4
+    "quality": 0.579,
+    "bonus_ms": -19.6
    },
    "GB": {
-    "servers": 23,
-    "probed": 9,
+    "servers": 21,
+    "probed": 6,
     "probe_mean": 0.333,
-    "rkn_share": 0.261,
-    "tspu_share": 0.391,
-    "quality": 0.47,
+    "rkn_share": 0.238,
+    "tspu_share": 0.429,
+    "quality": 0.467,
     "bonus_ms": -30
    }
   }
@@ -1143,117 +1158,117 @@
  "ooni": {
   "country": "RU",
   "test_name": "web_connectivity",
-  "pressure_percent": 32.3,
-  "measurements": 690312,
-  "anomaly": 192448,
-  "confirmed": 30627,
+  "pressure_percent": 32.1,
+  "measurements": 753813,
+  "anomaly": 208613,
+  "confirmed": 33574,
   "since": "2026-11-04",
   "until": "2026-11-08",
-  "updated_utc": "2026-11-07T07:12:47+00:00",
+  "updated_utc": "2026-11-07T14:04:45+00:00",
   "operators": [
    {
     "asn": "AS39028",
     "name": "",
-    "measurements": 109053,
-    "anomaly": 11798,
-    "confirmed": 22146,
+    "measurements": 121414,
+    "anomaly": 13086,
+    "confirmed": 24614,
     "pressure": 31.1
    },
    {
     "asn": "AS12389",
     "name": "Ростелеком",
-    "measurements": 82294,
-    "anomaly": 26847,
+    "measurements": 89245,
+    "anomaly": 28850,
     "confirmed": 3,
-    "pressure": 32.6
+    "pressure": 32.3
    },
    {
     "asn": "AS25513",
     "name": "",
-    "measurements": 28349,
-    "anomaly": 11121,
-    "confirmed": 52,
-    "pressure": 39.4
-   },
-   {
-    "asn": "AS42610",
-    "name": "",
-    "measurements": 23435,
-    "anomaly": 5627,
-    "confirmed": 0,
-    "pressure": 24.0
+    "measurements": 30234,
+    "anomaly": 11816,
+    "confirmed": 60,
+    "pressure": 39.3
    },
    {
     "asn": "AS8402",
     "name": "",
-    "measurements": 23306,
-    "anomaly": 8499,
-    "confirmed": 49,
-    "pressure": 36.7
+    "measurements": 25638,
+    "anomaly": 9328,
+    "confirmed": 55,
+    "pressure": 36.6
+   },
+   {
+    "asn": "AS42610",
+    "name": "",
+    "measurements": 24857,
+    "anomaly": 6145,
+    "confirmed": 0,
+    "pressure": 24.7
    },
    {
     "asn": "AS50716",
     "name": "",
-    "measurements": 19422,
-    "anomaly": 3661,
+    "measurements": 20485,
+    "anomaly": 3936,
     "confirmed": 0,
-    "pressure": 18.8
+    "pressure": 19.2
    },
    {
     "asn": "AS24955",
     "name": "",
-    "measurements": 12348,
-    "anomaly": 2192,
+    "measurements": 13446,
+    "anomaly": 2380,
     "confirmed": 0,
-    "pressure": 17.8
+    "pressure": 17.7
    },
    {
     "asn": "AS35807",
     "name": "",
-    "measurements": 11110,
-    "anomaly": 5340,
+    "measurements": 11976,
+    "anomaly": 5670,
     "confirmed": 0,
-    "pressure": 48.1
+    "pressure": 47.3
    },
    {
     "asn": "AS51659",
     "name": "",
-    "measurements": 10200,
-    "anomaly": 455,
+    "measurements": 10480,
+    "anomaly": 457,
     "confirmed": 0,
-    "pressure": 4.5
+    "pressure": 4.4
    },
    {
     "asn": "AS31133",
     "name": "МегаФон",
-    "measurements": 10031,
-    "anomaly": 4025,
-    "confirmed": 91,
-    "pressure": 41.0
+    "measurements": 10231,
+    "anomaly": 4076,
+    "confirmed": 93,
+    "pressure": 40.7
+   },
+   {
+    "asn": "AS3216",
+    "name": "Билайн (Вымпелком)",
+    "measurements": 9929,
+    "anomaly": 2513,
+    "confirmed": 1,
+    "pressure": 25.3
    },
    {
     "asn": "AS30922",
     "name": "",
-    "measurements": 8485,
-    "anomaly": 2017,
+    "measurements": 9185,
+    "anomaly": 2215,
     "confirmed": 0,
-    "pressure": 23.8
-   },
-   {
-    "asn": "AS12768",
-    "name": "",
-    "measurements": 8202,
-    "anomaly": 946,
-    "confirmed": 2068,
-    "pressure": 36.7
+    "pressure": 24.1
    }
   ],
   "blocking_types": {
-   "http-failure": 134041,
-   "dns": 68211,
-   "tcp_ip": 15621,
-   "http-diff": 3090
+   "http-failure": 144860,
+   "dns": 74527,
+   "tcp_ip": 17024,
+   "http-diff": 3398
   }
  },
- "rkn_seen_count": 97
+ "rkn_seen_count": 103
 }
