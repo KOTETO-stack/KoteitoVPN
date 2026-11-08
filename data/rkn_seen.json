@@ -260,7 +260,7 @@
  },
  "185.193.29.123": {
   "first": "2026-11-06",
-  "last": "2026-11-06",
+  "last": "2026-11-08",
   "country": "FR",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
@@ -482,12 +482,26 @@
   "asn": "AS20473",
   "net": "AS-VULTR"
  },
+ "216.24.57.40": {
+  "first": "2026-11-08",
+  "last": "2026-11-08",
+  "country": "US",
+  "asn": "AS397273",
+  "net": "RENDER"
+ },
  "217.144.188.185": {
   "first": "2026-11-05",
   "last": "2026-11-08",
   "country": "FI",
   "asn": "AS210644",
   "net": "AEZA-AS"
+ },
+ "217.217.235.100": {
+  "first": "2026-11-08",
+  "last": "2026-11-08",
+  "country": "BG",
+  "asn": "AS203380",
+  "net": "DAInternationalGroup"
  },
  "217.60.33.67": {
   "first": "2026-11-05",
@@ -503,12 +517,26 @@
   "asn": "AS197574",
   "net": "EXPRESSHOST"
  },
+ "31.12.75.64": {
+  "first": "2026-11-08",
+  "last": "2026-11-08",
+  "country": "RU",
+  "asn": "AS209242",
+  "net": "CLOUDFLARESPECTRUM"
+ },
  "31.76.83.1": {
   "first": "2026-11-06",
   "last": "2026-11-07",
   "country": "LT",
   "asn": "AS207957",
   "net": "ServHost-AS"
+ },
+ "43.199.76.60": {
+  "first": "2026-11-08",
+  "last": "2026-11-08",
+  "country": "HK",
+  "asn": "AS16509",
+  "net": "AMAZON-02"
  },
  "45.12.30.30": {
   "first": "2026-11-07",
@@ -544,6 +572,13 @@
   "country": "PL",
   "asn": "AS197574",
   "net": "EXPRESSHOST"
+ },
+ "45.59.102.208": {
+  "first": "2026-11-08",
+  "last": "2026-11-08",
+  "country": "US",
+  "asn": "AS18450",
+  "net": "WEBNX"
  },
  "45.91.248.239": {
   "first": "2026-11-07",
