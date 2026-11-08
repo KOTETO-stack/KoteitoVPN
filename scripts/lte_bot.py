@@ -22,6 +22,13 @@ workflow lte_bot.yml раз в 5 минут забирает новые сооб
   к США Чикаго #2               #1 или #2 ограничивает поиск первой или второй подпиской
   остальные красные #1          все серверы подписки 1, которых нет среди зелёных в этом сообщении
 Буквы цвета: з, g, + для зелёного; к, r, - для красного.
+
+JSON из Karing (скопированный сервер целиком, поля server, server_port, tag, type, latency):
+  з                             одинокое слово з или к в строке перед JSON задаёт цвет
+  { "server": "...", "server_port": 443, "latency": "106", ... }
+  Метка действует на все JSON ниже, пока не встретится другая. Без метки цвет берётся по latency:
+  есть число больше нуля = зелёный, пусто или 0 = красный (бот скажет об этом в ответе).
+  В файл попадают только адрес, порт, название, тип и мс. Uuid, пароли и ключи не сохраняются.
 Команды: /help, /last [N], /stats, /undo (убрать записи последнего сообщения), /clean.
 
 Чистка: у каждого сервера хранятся только последние KEEP_PER_SERVER замеров, записи старше
@@ -63,6 +70,9 @@ HELP = (
     "к США Чикаго #2           (#1 или #2 = только первая или вторая подписка)\n"
     "остальные красные #1      (все остальные серверы подписки 1 красные; те, что были зелёными "
     "за последние 12 часов, не трогаю)\n\n"
+    "Можно слать JSON сервера из Karing. В строке перед ним поставь з (рабочий) или к (нерабочий). "
+    "Метка действует на все JSON ниже, пока не встретится другая. Без метки цвет беру по latency: "
+    "число = зелёный, пусто или 0 = красный. Ключи и uuid в файл не пишу.\n\n"
     "Цвет: з, g, + = зелёный; к, r, - = красный.\n"
     "Команды: /last [N] последние записи, /stats сводка, /undo убрать записи последнего "
     "сообщения, /clean почистить старое сейчас.\n"
@@ -182,6 +192,71 @@ def find_servers(query, servers, group=None):
 ADDR_RE = re.compile(r"^(\[[0-9a-fA-F:.]+\]|[A-Za-z0-9._\-]+):(\d{1,5})$")
 GROUP_RE = re.compile(r"#(\d+)")
 REST_RE = re.compile(r"^(остальн\w*|rest)\s+(красн\w*|red|r|к)\b", re.IGNORECASE)
+FLAG_RE = re.compile("[\U0001F1E6-\U0001F1FF\uFE0F\u200d]+")
+JSON_DEC = json.JSONDecoder()
+
+
+def marker_of(line):
+    """Строка из одного слова з/к (и их синонимов) -> G или R, иначе None."""
+    tok = (line or "").strip().lower().rstrip(":.,")
+    if tok in GREEN_WORDS:
+        return "G"
+    if tok in RED_WORDS:
+        return "R"
+    return None
+
+
+def extract_json_servers(text):
+    """Достаёт из текста JSON-конфиги Karing (есть поля server и server_port).
+    Цвет задаёт одинокое слово з или к в строке перед JSON и действует на все JSON ниже,
+    пока не встретится другая метка.
+    -> ([(цвет или None, словарь)], остаток текста без этих JSON и без меток)."""
+    items, rest, i, cur = [], [], 0, None
+    while True:
+        j = text.find("{", i)
+        if j < 0:
+            rest.append(text[i:])
+            break
+        try:
+            obj, end = JSON_DEC.raw_decode(text, j)
+        except ValueError:
+            rest.append(text[i:j + 1])
+            i = j + 1
+            continue
+        lines_b = [l for l in text[i:j].splitlines() if l.strip()]
+        if lines_b:
+            mk = marker_of(lines_b[-1])
+            if mk:
+                cur = mk
+                lines_b = lines_b[:-1]
+        rest.append("\n".join(lines_b))
+        if isinstance(obj, dict) and obj.get("server") and obj.get("server_port"):
+            items.append((cur, obj))
+        else:
+            rest.append(text[j:end])
+        i = end
+    return items, "\n".join(x for x in rest if x.strip())
+
+
+def json_record(obj, color):
+    """JSON сервера из Karing -> (G/R, адрес, описание, мс, цвет_угадан) или None.
+    Из JSON берутся только server, server_port, tag, type, latency."""
+    host = str(obj.get("server", "")).strip().lower().strip("[]")
+    try:
+        port = int(obj.get("server_port"))
+    except (TypeError, ValueError):
+        return None
+    if not host or not (0 < port < 65536):
+        return None
+    if ":" in host:
+        host = "[%s]" % host
+    lat = str(obj.get("latency", "")).strip()
+    ms = lat if re.fullmatch(r"\d{1,5}", lat) and int(lat) > 0 else ""
+    guessed = color is None
+    res = color or ("G" if ms else "R")
+    tag = FLAG_RE.sub("", str(obj.get("tag", ""))).strip()
+    desc = ("%s %s" % (tag, obj.get("type", ""))).strip()
+    return res, "%s:%d" % (host, port), desc, (ms if res == "G" else ""), guessed
 
 
 def parse_line(line):
@@ -262,9 +337,25 @@ def handle_text(text, when, state, lines, servers):
     if low.startswith("/"):
         return "Не знаю такой команды. /help покажет, что я умею."
 
-    parsed = [(ln, parse_line(ln)) for ln in stripped.splitlines() if ln.strip()]
+    json_items, text_rest = extract_json_servers(stripped)
+    parsed = [(ln, parse_line(ln)) for ln in text_rest.splitlines() if ln.strip()]
     added, skipped, ambiguous, rest_cmds = [], [], [], []
     green_addrs, mentioned = set(), set()
+    guessed_n = 0
+    for color, obj in json_items:
+        rec = json_record(obj, color)
+        if rec is None:
+            skipped.append("JSON без адреса или порта сервера")
+            continue
+        res, addr, desc, ms, guessed = rec
+        new_line = result_line(label, res, addr, desc, ms)
+        if new_line not in lines and new_line not in added:
+            added.append(new_line)
+        mentioned.add(addr)
+        if res == "G":
+            green_addrs.add(addr)
+        if guessed:
+            guessed_n += 1
     for ln, p in parsed:
         if p is None:
             continue
@@ -316,6 +407,9 @@ def handle_text(text, when, state, lines, servers):
     if added:
         reply.append("Записано: зелёных %d, красных %d%s." % (
             g, r, " (из них по «остальные красные»: %d)" % rest_count if rest_count else ""))
+        if guessed_n:
+            reply.append("У %d JSON не было метки з/к, цвет определил по latency (число = зелёный, "
+                         "пусто или 0 = красный). Если ошибся, /undo и пришли заново с меткой." % guessed_n)
         if len(lines) > 0:
             new, removed = prune(lines, when)
             if removed:
@@ -329,7 +423,7 @@ def handle_text(text, when, state, lines, servers):
     if skipped:
         reply.append("Не понял: " + "; ".join(skipped[:8]))
     if not reply:
-        reply.append("Ничего не записал. /help покажет форматы.")
+        reply.append("Ничего не записал (возможно, такие записи уже есть). /help покажет форматы.")
     return "\n".join(reply)
 
 
@@ -493,7 +587,7 @@ def process(token=None):
             continue
         if not text:
             outbox.append({"chat_id": chat, "text": "Пока понимаю только текст. Скриншоты не разбираю: "
-                           "пришли строки вида «з Германия Оффенбах 86»."})
+                           "пришли строки вида «з Германия Оффенбах 86» или JSON сервера из Karing."})
             continue
         when = datetime.fromtimestamp(int(msg.get("date", 0)) or datetime.now(TZ).timestamp(), TZ)
         try:
