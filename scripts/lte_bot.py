@@ -15,6 +15,13 @@ workflow lte_bot.yml раз в 5 минут забирает новые сооб
 можно задать отдельный LTE_BOT_ALLOWED со списком id через запятую). Сообщения от других людей
 игнорируются, кроме команды /start или /id: на неё бот отвечает id отправителя.
 
+Откуда берутся сообщения:
+  Режим Worker (основной). Cloudflare Worker принимает webhook Telegram и сразу запускает workflow,
+  передавая сообщение в переменной окружения LTE_UPDATE (JSON одного update). Ответ приходит
+  в конце запуска, обычно за минуту. Повторно пришедший update (по update_id) пропускается.
+  Режим опроса (запасной). Без LTE_UPDATE бот сам забирает сообщения через getUpdates.
+  Работает только если у бота снят webhook (см. deleteWebhook) и в lte_bot.yml включён cron.
+
 Что понимает (одна строка = один сервер, можно присылать несколько строк в одном сообщении):
   з 45.145.43.151:443 86        зелёный сервер по адресу, число = мс (необязательно)
   к 94.183.206.83:2087          красный сервер по адресу
@@ -555,12 +562,22 @@ def process(token=None):
         print("lte_bot: секрет LTE_BOT_TOKEN не задан, пропускаю.")
         return
     state = load_state()
-    try:
-        updates = api(token, "getUpdates", {"offset": state.get("offset", 0), "timeout": 0,
-                                            "allowed_updates": ["message"]})
-    except Exception as e:
-        print("lte_bot: не удалось получить сообщения (%s)" % e)
-        return
+    raw_update = os.environ.get("LTE_UPDATE", "").strip()
+    from_webhook = bool(raw_update)
+    if from_webhook:
+        try:
+            one = json.loads(raw_update)
+        except ValueError as e:
+            print("lte_bot: сообщение от Worker не разобрано (%s)" % e)
+            return
+        updates = [one] if isinstance(one, dict) else []
+    else:
+        try:
+            updates = api(token, "getUpdates", {"offset": state.get("offset", 0), "timeout": 0,
+                                                "allowed_updates": ["message"]})
+        except Exception as e:
+            print("lte_bot: не удалось получить сообщения (%s)" % e)
+            return
     if not updates:
         print("lte_bot: новых сообщений нет.")
         return
@@ -574,6 +591,14 @@ def process(token=None):
     max_id = state.get("offset", 0) - 1
     for u in updates:
         max_id = max(max_id, int(u.get("update_id", 0)))
+        uid = u.get("update_id")
+        if from_webhook and uid is not None:
+            seen = state.setdefault("seen_updates", [])
+            if uid in seen:
+                print("lte_bot: сообщение %s уже обработано, пропускаю." % uid)
+                continue
+            seen.append(uid)
+            del seen[:-100]
         msg = u.get("message") or {}
         frm = str((msg.get("from") or {}).get("id", ""))
         chat = (msg.get("chat") or {}).get("id")
@@ -596,7 +621,8 @@ def process(token=None):
             reply = "Ошибка при разборе сообщения (%s). Записи не менял." % e
         outbox.append({"chat_id": chat, "text": reply[:3500]})
 
-    state["offset"] = max_id + 1
+    if not from_webhook:
+        state["offset"] = max_id + 1
     if lines != original:
         write_lines(RESULTS, lines)
     archive_add = state.pop("archive_add", [])
