@@ -1,19 +1,23 @@
 name: LTE Bot
 
+# Основной режим: Cloudflare Worker принимает сообщение от Telegram и запускает этот workflow,
+# передавая сообщение (JSON) во входе update.
+# Запасной режим опроса (если у бота снят webhook): раскомментируй две строки с cron ниже.
 on:
-  schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      update:
+        description: "Сообщение Telegram в JSON (подставляет Worker; при ручном запуске можно оставить пустым)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "*/5 * * * *"
 
 permissions:
   contents: write
 
-concurrency:
-  group: lte-bot
-  cancel-in-progress: false
-
 jobs:
-  poll:
+  handle:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -27,32 +31,41 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Process messages
+      - name: Process and commit
         env:
           LTE_BOT_TOKEN: ${{ secrets.LTE_BOT_TOKEN }}
           LTE_BOT_ALLOWED: ${{ secrets.LTE_BOT_ALLOWED || secrets.TELEGRAM_CHAT_ID }}
-        run: python scripts/lte_bot.py process
-
-      - name: Commit results
+          LTE_UPDATE: ${{ github.event.inputs.update }}
         run: |
           git config user.name "koteito-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add lte_results.txt data/lte_bot_state.json data/lte_results_archive.txt 2>/dev/null || true
-          if git diff --cached --quiet; then
-            echo "Нет изменений"
-            exit 0
-          fi
-          git commit -m "lte-bot: замеры"
           ok=0
-          for i in 1 2 3; do
-            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+          for i in 1 2 3 4 5 6; do
+            # каждый раз начинаем со свежей версии main: если параллельный запуск успел запушить,
+            # сообщение просто обрабатывается заново на актуальных файлах
+            git fetch origin main
+            git reset --hard origin/main
+            python scripts/lte_bot.py process
+            for f in lte_results.txt data/lte_bot_state.json data/lte_results_archive.txt; do
+              if [ -e "$f" ]; then
+                git add "$f"
+              fi
+            done
+            if git diff --cached --quiet; then
+              echo "Нет изменений"
               ok=1
               break
             fi
-            sleep 5
+            git commit -m "lte-bot: замеры"
+            if git push origin HEAD:main; then
+              ok=1
+              break
+            fi
+            echo "push не удался (попытка $i), повторяю на свежей версии"
+            sleep $((RANDOM % 5 + 3))
           done
           if [ "$ok" != "1" ]; then
-            echo "push не удался, ответы не отправляю, сообщения обработаются при следующем запуске"
+            echo "push не удался, ответ не отправляю"
             exit 1
           fi
 
