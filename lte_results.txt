@@ -6,16 +6,12 @@
 # Строки с # игнорируются. Серверы без известного адреса сюда не вносим.
 
 # --- 26 окт 2026
-26окт;G;45.145.43.151:443;Offenbach vless reality;82
-26окт;G;45.145.43.151:9443;Offenbach-1 vless ws tls;315
 26окт;G;151.101.36.244:443;igareck Anycast trojan ws;146
 26окт;G;39.108.113.127:10086;igareck Shenzhen vmess ws;300
 26окт;G;185.156.44.99:443;igareck Bucharest hy2;567
 26окт;R;s3.huhiuh.space:18642;igareck hy2;
 
 # --- 27 окт 2026, ночью (00:35)
-27окт-ночь;G;45.145.43.151:443;Offenbach vless reality;128
-27окт-ночь;G;45.145.43.151:9443;Offenbach-1 vless ws tls;128
 27окт-ночь;G;tjrb.m2k699.com:24999;Tokyo trojan;301
 27окт-ночь;G;188.225.33.141:443;Russia Saint Petersburg-1 vless ws tls;105
 27окт-ночь;G;185.156.44.99:443;igareck Bucharest hy2;154
@@ -36,7 +32,6 @@
 день;G;163.245.42.48:443;Страсбург vless reality;55
 день;G;104.25.199.149:443;Торонто-9 vless ws tls workers.dev;62
 день;G;104.18.41.190:443;Торонто-9 vless ws tls ccc.010304.xyz;62
-день;G;45.145.43.151:9443;Offenbach vless ws tls;63
 день;G;88.218.170.236:443;Москва-6 vless reality userapi;82
 день;G;ee.h1cloud.net:25895;Тель-Авив-1 vless reality;91
 день;G;50.7.184.122:443;Австрия vless tls vision;96
@@ -88,3 +83,4 @@
 2026-11-03 13:05;G;24.233.8.109:443;hy2 salamander Гонконг-2, SNI www.bing.com, мс общее;301
 2026-11-03 13:05;G;fre.guren1.me:8443;hy2 Гонконг-2, мс общее;301
 2026-11-03 13:05;G;154.90.62.70:56127;trojan tls Сеул, SNI равен IP, insecure;397
+2026-11-08 11:14;R;169.40.42.229:443;США Нью-Йорк vless;
