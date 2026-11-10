@@ -4,3 +4,4 @@
 27окт-ночь;G;45.145.43.151:9443;Offenbach-1 vless ws tls;128
 день;G;45.145.43.151:9443;Offenbach vless ws tls;63
 ночь;G;45.145.43.151:443;Offenbach vless reality;98
+день;G;152.32.254.68:5010;Гонконг-4 hy2 salamander;300
