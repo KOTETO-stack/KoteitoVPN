@@ -6,3 +6,4 @@
 ночь;G;45.145.43.151:443;Offenbach vless reality;98
 день;G;152.32.254.68:5010;Гонконг-4 hy2 salamander;300
 ночь;G;152.32.254.68:5010;Гонконг-3 hy2 salamander;318
+ночь;G;45.145.43.151:9443;Offenbach-1 vless ws tls;97
