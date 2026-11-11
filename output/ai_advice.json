@@ -1,0 +1,40 @@
+{
+  "rules": [
+    {
+      "field": "protocol",
+      "value": "trojan",
+      "weight": 10
+    },
+    {
+      "field": "protocol",
+      "value": "hysteria2",
+      "weight": 5
+    },
+    {
+      "field": "protocol",
+      "value": "vless",
+      "weight": -5
+    },
+    {
+      "field": "security",
+      "value": "tls",
+      "weight": 8
+    },
+    {
+      "field": "security",
+      "value": "reality",
+      "weight": 6
+    },
+    {
+      "field": "port",
+      "value": "443",
+      "weight": 12
+    },
+    {
+      "field": "country",
+      "value": "🇷🇺",
+      "weight": -8
+    }
+  ],
+  "comment": "Протоколы trojan и hysteria2 имеют приоритет на сотовой сети, в то время как vless нестабилен"
+}
