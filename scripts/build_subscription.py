@@ -13,11 +13,18 @@ build_subscription.py
  - конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных транспортов,
    маскировки, подтверждений пользователей, давления блокировок и советов ИИ;
    штраф за недоступность из РФ по output/ru_probe.json);
+ - серверы, зелёные на мобильной сети не позже LTE_PIN_DAYS дней назад (lte_results.txt),
+   закрепляются: идут первыми и не режутся лимитом MAX_PER_COUNTRY (всё равно без повторов
+   между подписками и не больше MAX_SERVERS в подписке);
  - лучшие раздаются по кругу;
  - в подписке не больше MAX_SERVERS серверов и MAX_PER_COUNTRY на страну;
  - серверы из EXCLUDED_COUNTRIES (Россия) в основной пул не берутся;
  - vless без Reality и TLS не берётся;
  - подписка добивается запасными до круглого десятка (каждый запасной один раз).
+
+Названия: порядковые номера в конце («-1», «-2», «Лос-Анджелес-3») убираются при записи
+подписок (STRIP_SERVER_NUMBERS = True). Подтверждения пользователей ищутся и по очищенному
+названию, и по старому с номером.
 
 Мобильная добавка (MOBILE_QUOTA серверов в КАЖДУЮ подписку), из НАШЕГО пула:
  - сначала серверы из России (MOBILE_COUNTRIES), которых нет в основной выдаче:
@@ -37,6 +44,8 @@ build_subscription.py
  - сети хостеров с ограничением ТСПУ "16 КБ" (data/tspu_asn.json): мягкий штраф;
  - приоритет стран из данных (ответ с российских узлов, доля в списках РКН и в
    ТСПУ-сетях): бонус или штраф до 30 мс, отчёт в output/country_priority.json;
+ - замеры на LTE: бонус и штраф с учётом свежести, закрепление зелёных, оценка серверов без
+   замера по протоколу, подсети /24 и сети (подробности в net_signals.py);
  - любая ошибка сигналов не ломает сборку, сортировка тогда работает как раньше.
 
 Защита от просадки (SHRINK_GUARD): если новая подписка меньше доли SHRINK_GUARD
@@ -104,6 +113,8 @@ EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России
 ALLOW_VLESS = True                    # False = vless не берётся совсем
 ALLOW_PLAIN_VLESS = False             # vless без Reality и без TLS не берётся
 
+STRIP_SERVER_NUMBERS = True           # убирать порядковые номера «-1», «-2» в конце названия
+
 REPORT_BONUS_MS = 150                 # подтверждённый человеком сервер важнее
 REPORT_TTL_HOURS = 48                 # сколько часов подтверждение актуально
 
@@ -130,6 +141,20 @@ HY2_SCHEMES = {"hysteria2", "hy2"}
 
 TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
 SECURITY_RE = re.compile(r"[?&]security=([a-zA-Z0-9_-]+)", re.IGNORECASE)
+NUMBER_SUFFIX_RE = re.compile(r"\s*-\s*\d+\s*$")
+
+
+def clean_name(name):
+    """Убирает порядковый номер в конце названия: «США Лос-Анджелес-3» -> «США Лос-Анджелес»."""
+    if not STRIP_SERVER_NUMBERS:
+        return name
+    cleaned = NUMBER_SUFFIX_RE.sub("", name or "").strip()
+    return cleaned or name
+
+
+def server_name(c):
+    """Название сервера для подписки (без номера)."""
+    return clean_name(c.get("display_name") or c.get("remark") or "VPN")
 
 
 def load_reports():
@@ -196,6 +221,12 @@ def is_confirmed(display_name, reports, now):
         except (ValueError, TypeError):
             pass
     return True
+
+
+def report_confirmed(c, reports, now):
+    """Подтверждение ищется по названию без номера и по старому названию с номером."""
+    raw_name = c.get("display_name") or c.get("remark") or "VPN"
+    return is_confirmed(clean_name(raw_name), reports, now) or is_confirmed(raw_name, reports, now)
 
 
 def load_ooni_pressure():
@@ -386,11 +417,10 @@ def make_sort_key(reports, now, probe, sig=None):
         mask_bonus = mask_info(c)["score"] * MASK_POINT_MS
         bonus += max(-MASK_MAX_BONUS_MS, min(MASK_MAX_BONUS_MS, mask_bonus))
 
-        display_name = c.get("display_name") or c.get("remark") or "VPN"
-        if is_confirmed(display_name, reports, now):
+        if report_confirmed(c, reports, now):
             bonus += REPORT_BONUS_MS
 
-        ai_bonus = ai_score(rename_uri(c.get("raw", ""), display_name)) * AI_POINT_MS
+        ai_bonus = ai_score(rename_uri(c.get("raw", ""), server_name(c))) * AI_POINT_MS
         bonus += max(-AI_MAX_BONUS_MS, min(AI_MAX_BONUS_MS, ai_bonus))
 
         penalty = probe_penalty_ms(c, probe, now_ts)
@@ -398,7 +428,7 @@ def make_sort_key(reports, now, probe, sig=None):
         extra = 0
         if sig is not None:
             try:
-                extra = sig.adjust_ms(c)      # штрафы РКН и ТСПУ минус бонус страны
+                extra = sig.adjust_ms(c)      # штрафы РКН и ТСПУ, замеры LTE, минус бонус страны
             except Exception:
                 extra = 0
 
@@ -426,8 +456,9 @@ def label_for(index):
     return "подписка %d" % (index + 1)
 
 
-def split_pool(configs, sort_key, n):
-    """Делит пул на n подписок: лучшие серверы раздаются по кругу."""
+def split_pool(configs, sort_key, n, pinned=None):
+    """Делит пул на n подписок: лучшие серверы раздаются по кругу.
+    pinned(c) -> True ставит сервер в самое начало и снимает с него лимит MAX_PER_COUNTRY."""
     seen = set()
     pool = []
     candidates = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
@@ -436,7 +467,21 @@ def split_pool(configs, sort_key, n):
     if before != len(candidates):
         print(f"vless отфильтрован: {before - len(candidates)} серверов "
               f"(ALLOW_VLESS={ALLOW_VLESS}, ALLOW_PLAIN_VLESS={ALLOW_PLAIN_VLESS})")
-    for c in sorted(candidates, key=sort_key):
+
+    ordered = sorted(candidates, key=sort_key)
+    pin_set = set()
+    if pinned is not None:
+        pins = []
+        for c in ordered:
+            try:
+                if pinned(c):
+                    pins.append(c)
+            except Exception:
+                pass
+        pin_set = {c["raw"] for c in pins}
+        ordered = pins + [c for c in ordered if c["raw"] not in pin_set]
+
+    for c in ordered:
         if c["raw"] in seen:
             continue
         seen.add(c["raw"])
@@ -448,10 +493,13 @@ def split_pool(configs, sort_key, n):
     turn = 0
     for c in pool:
         cc = c.get("country_code", "??")
+        is_pin = c["raw"] in pin_set
         placed = False
         for step in range(n):
             g = (turn + step) % n
-            if len(groups[g]) >= MAX_SERVERS or counts[g].get(cc, 0) >= MAX_PER_COUNTRY:
+            if len(groups[g]) >= MAX_SERVERS:
+                continue
+            if not is_pin and counts[g].get(cc, 0) >= MAX_PER_COUNTRY:
                 continue
             groups[g].append(c)
             counts[g][cc] = counts[g].get(cc, 0) + 1
@@ -460,6 +508,9 @@ def split_pool(configs, sort_key, n):
             break
         if not placed:
             leftovers.append(c)
+    if pin_set:
+        placed_pins = sum(1 for c in pool if c["raw"] in pin_set)
+        print(f"Закреплено вверху (зелёные на LTE): {placed_pins} серверов.")
     return groups, leftovers
 
 
@@ -565,9 +616,8 @@ def write_mobile_list(groups, probe):
         for c in items:
             ratio = probe_ratio(c, probe, now_ts)
             answer = "нет данных" if ratio is None else "%d%%" % round(ratio * 100)
-            name = c.get("display_name") or c.get("remark") or "VPN"
             lines.append("%s | %s | %s | %s" % (
-                name, c.get("proto", "?"), c.get("country_code", "??"), answer))
+                server_name(c), c.get("proto", "?"), c.get("country_code", "??"), answer))
     lines.insert(3, "# Всего серверов: %d" % total)
     try:
         with open(OUT_MOBILE_LIST, "w", encoding="utf-8") as f:
@@ -596,11 +646,10 @@ def print_asn_map(written, asn):
             except ValueError:
                 host, port = "", None
             info = asn.get(host) or {}
-            name = c.get("display_name") or c.get("remark") or "VPN"
             mark = " [моб]" if c.get("mobile") else ""
             dc = " DC" if info.get("hosting") else ""
             print("%s%s | %s | %s:%s | %s %s%s" % (
-                name, mark, c.get("proto", "?"), host, port,
+                server_name(c), mark, c.get("proto", "?"), host, port,
                 info.get("asn", "?"), info.get("name", ""), dc))
     print("::endgroup::")
 
@@ -620,8 +669,8 @@ def render_subscription(configs, reports, now, probe, out_sub, out_readable, lab
 
     final_lines = []
     for c in configs:
-        display_name = c.get("display_name") or c.get("remark") or "VPN"
-        if is_confirmed(display_name, reports, now):
+        display_name = server_name(c)
+        if report_confirmed(c, reports, now):
             display_name = f"{display_name} \u2705"
         final_lines.append(rename_uri(c["raw"], display_name))
 
@@ -639,10 +688,7 @@ def render_subscription(configs, reports, now, probe, out_sub, out_readable, lab
     stable_transport_count = sum(
         1 for c in configs if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS
     )
-    confirmed_count = sum(
-        1 for c in configs
-        if is_confirmed(c.get("display_name") or c.get("remark") or "VPN", reports, now)
-    )
+    confirmed_count = sum(1 for c in configs if report_confirmed(c, reports, now))
     mobile_count = sum(1 for c in configs if c.get("mobile"))
     mobile_ru = sum(1 for c in configs if c.get("mobile") and c.get("country_code") in MOBILE_COUNTRIES)
     countries_count = len({c.get("country_code", "??") for c in configs if not c.get("mobile")})
@@ -702,7 +748,7 @@ def drop_rkn_blocked(configs, sig):
     for c in dropped:
         try:
             e = sig.evaluate(c)
-            print("%s | %s:%s | %s" % (c.get("display_name") or c.get("remark") or "VPN",
+            print("%s | %s:%s | %s" % (server_name(c),
                                        e.get("ip") or c.get("host"), c.get("port"),
                                        ("AS%s" % e["asn"]) if e.get("asn") else "?"))
         except Exception:
@@ -725,7 +771,8 @@ def main():
     sort_key = make_sort_key(reports, now, probe, sig)
 
     count = max(1, SUBSCRIPTION_COUNT)
-    groups, leftovers = split_pool(configs, sort_key, count)
+    pinned_fn = sig.is_lte_pinned if sig is not None else None
+    groups, leftovers = split_pool(configs, sort_key, count, pinned_fn)
     print(f"Пул после фильтров: {sum(len(g) for g in groups) + len(leftovers)} серверов, "
           f"делим на {count} подписок.")
 
