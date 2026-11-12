@@ -6,6 +6,21 @@
       "weight": -10
     },
     {
+      "field": "country",
+      "value": "🇷🇺",
+      "weight": -5
+    },
+    {
+      "field": "security",
+      "value": "none",
+      "weight": -5
+    },
+    {
+      "field": "port",
+      "value": "443",
+      "weight": 5
+    },
+    {
       "field": "protocol",
       "value": "vless",
       "weight": 5
@@ -13,18 +28,8 @@
     {
       "field": "security",
       "value": "tls",
-      "weight": 3
-    },
-    {
-      "field": "port",
-      "value": "443",
-      "weight": 2
-    },
-    {
-      "field": "country",
-      "value": "🇷🇺",
-      "weight": -5
+      "weight": 5
     }
   ],
-  "comment": "Протокол hysteria2 имеет низкий приоритет из-за проблем с подключением, в то время как vless и tls имеют более высокий приоритет из-за большего количества успешных подключений"
+  "comment": "Протокол hysteria2 и серверы в России имеют низкий приоритет, в то время как порт 443 и протокол vless имеют высокий приоритет"
 }
