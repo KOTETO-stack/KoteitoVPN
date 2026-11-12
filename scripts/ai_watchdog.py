@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ai_watchdog.py (версия 3)
+ai_watchdog.py (версия 4)
 
 Сторож подписки. ТОЛЬКО ЧИТАЕТ файлы репозитория и пишет в Telegram,
 в репозиторий ничего не меняет.
@@ -13,9 +13,10 @@ ai_watchdog.py (версия 3)
     для сбора используется возраст raw_servers.txt по истории git).
  3. Читает покрытие проверки из РФ (output/ru_probe.json), число правил
     ИИ-советчика (output/ai_advice.json) и индикатор давления блокировок OONI.
- 4. Если есть проблемы, просит бесплатную модель GitHub Models коротко
-    объяснить вероятную причину. Модель получает только цифры, которые посчитал
-    сам скрипт. Если модель недоступна, причина попадает в отчёт.
+ 4. Если есть проблемы, просит модель Cloudflare Workers AI коротко объяснить
+    вероятную причину. Модель получает только цифры, которые посчитал сам
+    скрипт. Если модель недоступна, причина попадает в отчёт.
+    Секреты: CF_ACCOUNT_ID и CF_API_TOKEN (значения нигде не печатаются).
  5. Отправляет сообщение в Telegram: при проблемах; раз в сутки утром
     (по расписанию, 06-08 UTC) как проверка, что сам сторож жив; при ручном
     запуске (ALWAYS_REPORT=true) всегда.
@@ -24,7 +25,7 @@ ai_watchdog.py (версия 3)
 только в приложении. Любая ошибка не роняет workflow.
 
 Для проверки запусков в permissions workflow ai_watchdog.yml нужна строка
-`actions: read`.
+`actions: read`, а в env шага запуска: GITHUB_TOKEN, CF_ACCOUNT_ID, CF_API_TOKEN.
 """
 import json
 import os
@@ -54,10 +55,13 @@ WORKFLOW_CHECKS = [
 HEARTBEAT_HOURS_UTC = (6, 7, 8)   # суточный отчёт «сторож жив»
 PROBE_TTL_HOURS = 48
 
-AI_URL = "https://models.github.ai/inference/chat/completions"
-AI_MODEL = os.environ.get("AI_MODEL") or "openai/gpt-4o-mini"
-AI_API_VERSIONS = ["2026-03-10", "2022-11-28"]
+CF_RUN_URL = "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s"
+AI_MODELS = [
+    "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "@cf/meta/llama-3.1-8b-instruct",
+]
 AI_TIMEOUT = 60
+USER_AGENT = "KoteitoVPN-watchdog"
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -227,10 +231,34 @@ def find_problems(s):
     return problems
 
 
-def ask_one(api_version, system, user):
-    token = os.environ.get("GITHUB_TOKEN", "")
+def short(text, n=100):
+    return " ".join((text or "").split())[:n]
+
+
+def extract_text(data):
+    """Текст ответа модели Workers AI (result.response или формат choices), иначе пустая строка."""
+    nodes = [data]
+    if isinstance(data, dict):
+        nodes.append(data.get("result"))
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        resp = node.get("response")
+        if isinstance(resp, str) and resp.strip():
+            return resp.strip()
+        choices = node.get("choices")
+        if isinstance(choices, list) and choices and isinstance(choices[0], dict):
+            msg = choices[0].get("message") or {}
+            txt = msg.get("content") if isinstance(msg, dict) else None
+            if isinstance(txt, str) and txt.strip():
+                return txt.strip()
+    return ""
+
+
+def ask_one(model, system, user):
+    account = os.environ.get("CF_ACCOUNT_ID", "").strip()
+    token = os.environ.get("CF_API_TOKEN", "").strip()
     payload = {
-        "model": AI_MODEL,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -241,10 +269,11 @@ def ask_one(api_version, system, user):
     headers = {
         "Authorization": "Bearer " + token,
         "Content-Type": "application/json",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": api_version,
+        "Accept": "application/json",
+        "User-Agent": USER_AGENT,
     }
-    req = urllib.request.Request(AI_URL, data=json.dumps(payload).encode("utf-8"), headers=headers)
+    req = urllib.request.Request(CF_RUN_URL % (account, model),
+                                 data=json.dumps(payload).encode("utf-8"), headers=headers)
     try:
         with OPENER.open(req, timeout=AI_TIMEOUT) as resp:
             status = resp.status
@@ -252,7 +281,7 @@ def ask_one(api_version, system, user):
             text = resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         try:
-            detail = e.read().decode("utf-8", "ignore")[:100].replace("\n", " ")
+            detail = short(e.read().decode("utf-8", "ignore"))
         except Exception:
             detail = ""
         loc = e.headers.get("Location", "") if e.headers else ""
@@ -262,18 +291,17 @@ def ask_one(api_version, system, user):
     try:
         data = json.loads(text)
     except Exception:
-        raise RuntimeError("не JSON, HTTP %s, тип %s, тело: %s"
-                           % (status, ctype, " ".join(text.split())[:100]))
-    try:
-        return (data["choices"][0]["message"]["content"] or "").strip()
-    except Exception:
-        raise RuntimeError("нет choices: " + " ".join(text.split())[:100])
+        raise RuntimeError("не JSON, HTTP %s, тип %s, тело: %s" % (status, ctype, short(text)))
+    answer = extract_text(data)
+    if not answer:
+        raise RuntimeError("нет текста в ответе: " + short(text))
+    return answer
 
 
 def ai_comment(stats, problems):
     """Возвращает (комментарий, ошибка). Если ИИ ответил, ошибка пустая."""
-    if not os.environ.get("GITHUB_TOKEN"):
-        return "", "нет GITHUB_TOKEN"
+    if not os.environ.get("CF_ACCOUNT_ID", "").strip() or not os.environ.get("CF_API_TOKEN", "").strip():
+        return "", "нет секретов CF_ACCOUNT_ID или CF_API_TOKEN в запуске сторожа"
     system = (
         "Ты помощник, который следит за автоматической сборкой VPN-подписки. "
         "Отвечай по-русски, не больше 4 коротких предложений: что похоже на причину "
@@ -288,14 +316,14 @@ def ai_comment(stats, problems):
         "собирает основную и вторую подписки."
     )
     errors = []
-    for ver in AI_API_VERSIONS:
+    for model in AI_MODELS:
         try:
-            text = ask_one(ver, system, user)
+            text = ask_one(model, system, user)
             if text:
                 return text, ""
-            errors.append("v%s: пустой комментарий" % ver)
+            errors.append("%s: пустой комментарий" % model.split("/")[-1])
         except Exception as e:
-            errors.append("v%s: %s" % (ver, e))
+            errors.append("%s: %s" % (model.split("/")[-1], e))
     print("ИИ недоступен: " + " | ".join(errors))
     return "", " | ".join(errors)[:500]
 
