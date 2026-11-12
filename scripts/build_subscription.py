@@ -3,7 +3,7 @@
 """
 build_subscription.py
 Финальный шаг workflow. Делит ОДИН пул конфигов на SUBSCRIPTION_COUNT подписок.
-Серверы в подписках не повторяются.
+Серверы в подписках не повторяются (кроме закреплённых, см. ниже).
 
  Подписка 1 -> output/subscription.txt
  Подписка 2 -> output/subscription_cellular.txt (старое имя файла сохранено)
@@ -14,12 +14,19 @@ build_subscription.py
    маскировки, подтверждений пользователей, давления блокировок и советов ИИ;
    штраф за недоступность из РФ по output/ru_probe.json);
  - серверы, зелёные на мобильной сети не позже LTE_PIN_DAYS дней назад (lte_results.txt),
-   закрепляются: идут первыми и не режутся лимитом MAX_PER_COUNTRY (всё равно без повторов
-   между подписками и не больше MAX_SERVERS в подписке);
+   закрепляются: идут первыми и не режутся лимитом MAX_PER_COUNTRY (всё равно не больше
+   MAX_SERVERS в подписке);
+ - закреплённые не режутся и фильтрами: страны из EXCLUDED_COUNTRIES (Россия) и vless без
+   Reality и TLS для них не действуют, потому что замер на твоей сети сильнее
+   (PINNED_IGNORE_FILTERS = True);
+ - закреплённые попадают В КАЖДУЮ подписку (PIN_IN_ALL_SUBSCRIPTIONS = True), остальные
+   серверы без повторов; False возвращает старое поведение, когда закреплённые делятся
+   по кругу между подписками;
  - лучшие раздаются по кругу;
  - в подписке не больше MAX_SERVERS серверов и MAX_PER_COUNTRY на страну;
  - серверы из EXCLUDED_COUNTRIES (Россия) в основной пул не берутся;
  - vless без Reality и TLS не берётся;
+ - записи без адреса или порта (мусор в источниках) в подписки не берутся;
  - подписка добивается запасными до круглого десятка (каждый запасной один раз).
 
 Названия: порядковые номера в конце («-1», «-2», «Лос-Анджелес-3») убираются при записи
@@ -112,6 +119,9 @@ EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России
 
 ALLOW_VLESS = True                    # False = vless не берётся совсем
 ALLOW_PLAIN_VLESS = False             # vless без Reality и без TLS не берётся
+
+PINNED_IGNORE_FILTERS = True          # закреплённые (зелёные на LTE) не режутся фильтрами страны и vless
+PIN_IN_ALL_SUBSCRIPTIONS = True       # закреплённые есть в КАЖДОЙ подписке (False = делятся по кругу)
 
 STRIP_SERVER_NUMBERS = True           # убирать порядковые номера «-1», «-2» в конце названия
 
@@ -295,6 +305,25 @@ def vless_allowed(c) -> bool:
     return True
 
 
+def has_valid_address(c) -> bool:
+    """False для записей без адреса или порта в ссылке (мусор в источниках)."""
+    try:
+        u = urllib.parse.urlparse(c.get("raw", ""))
+        return bool(u.hostname) and u.port is not None
+    except ValueError:
+        return False
+
+
+def is_pinned(c, pinned) -> bool:
+    """True, если сервер закреплён (зелёный на LTE). Любая ошибка = не закреплён."""
+    if pinned is None:
+        return False
+    try:
+        return bool(pinned(c))
+    except Exception:
+        return False
+
+
 def _is_ip(host: str) -> bool:
     try:
         ipaddress.ip_address(host.strip().strip("[]"))
@@ -458,12 +487,26 @@ def label_for(index):
 
 def split_pool(configs, sort_key, n, pinned=None):
     """Делит пул на n подписок: лучшие серверы раздаются по кругу.
-    pinned(c) -> True ставит сервер в самое начало и снимает с него лимит MAX_PER_COUNTRY."""
+    pinned(c) -> True ставит сервер в самое начало и снимает с него лимит MAX_PER_COUNTRY
+    (и, при PINNED_IGNORE_FILTERS, фильтры страны и vless). При PIN_IN_ALL_SUBSCRIPTIONS
+    закреплённые попадают в каждую подписку."""
     seen = set()
     pool = []
-    candidates = [c for c in configs if c.get("country_code", "??") not in EXCLUDED_COUNTRIES]
+
+    valid = [c for c in configs if has_valid_address(c)]
+    if len(valid) != len(configs):
+        print(f"Отсеяно записей без адреса или порта: {len(configs) - len(valid)}")
+
+    def exempt(c):
+        return PINNED_IGNORE_FILTERS and is_pinned(c, pinned)
+
+    candidates = [c for c in valid
+                  if c.get("country_code", "??") not in EXCLUDED_COUNTRIES or exempt(c)]
+    kept_excluded = sum(1 for c in candidates if c.get("country_code", "??") in EXCLUDED_COUNTRIES)
+    if kept_excluded:
+        print(f"Закреплённые серверы из {sorted(EXCLUDED_COUNTRIES)} оставлены в пуле: {kept_excluded}")
     before = len(candidates)
-    candidates = [c for c in candidates if vless_allowed(c)]
+    candidates = [c for c in candidates if vless_allowed(c) or exempt(c)]
     if before != len(candidates):
         print(f"vless отфильтрован: {before - len(candidates)} серверов "
               f"(ALLOW_VLESS={ALLOW_VLESS}, ALLOW_PLAIN_VLESS={ALLOW_PLAIN_VLESS})")
@@ -473,11 +516,8 @@ def split_pool(configs, sort_key, n, pinned=None):
     if pinned is not None:
         pins = []
         for c in ordered:
-            try:
-                if pinned(c):
-                    pins.append(c)
-            except Exception:
-                pass
+            if is_pinned(c, pinned):
+                pins.append(c)
         pin_set = {c["raw"] for c in pins}
         ordered = pins + [c for c in ordered if c["raw"] not in pin_set]
 
@@ -511,6 +551,12 @@ def split_pool(configs, sort_key, n, pinned=None):
     if pin_set:
         placed_pins = sum(1 for c in pool if c["raw"] in pin_set)
         print(f"Закреплено вверху (зелёные на LTE): {placed_pins} серверов.")
+        if PIN_IN_ALL_SUBSCRIPTIONS and n > 1:
+            pins_sorted = [c for c in pool if c["raw"] in pin_set]
+            for g in range(n):
+                rest = [c for c in groups[g] if c["raw"] not in pin_set]
+                groups[g] = (pins_sorted + rest)[:MAX_SERVERS]
+            print(f"Закреплённые серверы есть в каждой подписке ({len(pins_sorted)} в каждой).")
     return groups, leftovers
 
 
@@ -534,7 +580,7 @@ def pick_mobile(configs, groups, sort_key, probe, sig=None):
     ru_total = ru_probed = foreign_ok = rkn_skipped = 0
     for c in configs:
         base = c.get("raw", "").split("#", 1)[0]
-        if not base or base in seen or not vless_allowed(c):
+        if not base or base in seen or not vless_allowed(c) or not has_valid_address(c):
             continue
         seen.add(base)
         if sig is not None and MOBILE_EXCLUDE_RKN:
