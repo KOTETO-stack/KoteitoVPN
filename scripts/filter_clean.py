@@ -16,6 +16,10 @@ filter_clean.py
    а не как кусок слова: раньше "tor" убирал Toronto, Victoria, Doctor..., а "test" — fastest;
  - IP 1.1.1.1 ищется как целый адрес, раньше это был кусок любого адреса вида x1.1.1.1x;
  - в лог выводится, сколько адресов исправлено и сколько убрано по слову-стопу.
+
+Версия 3:
+ - адреса из BAD_HOSTS (github.com и т.п.) не могут быть VPN-сервером: такие записи
+   (мусор в источниках) убираются.
 """
 import json
 import os
@@ -32,6 +36,9 @@ BAD_SUBSTRINGS = [
 ]
 # короткие слова-стоп: ищем только как отдельное слово (чтобы не убирать Toronto, fastest и т.п.)
 BAD_WORDS = ["tor", "test", "bns", "demo", "fake", "sample"]
+
+# адреса, которые не могут быть VPN-сервером (мусорные записи в источниках)
+BAD_HOSTS = ("github.com", "githubusercontent.com")
 
 _WORD_RE = re.compile(r"(?<![a-z0-9])(?:%s)(?![a-z0-9])" % "|".join(map(re.escape, BAD_WORDS)))
 _IP_RE = re.compile(r"(?<![\d.])1\.1\.1\.1(?!\d)")
@@ -86,6 +93,9 @@ def parse_config(raw):
 
 
 def is_bad(entry):
+    host = entry["host"].lower().strip(".")
+    if any(host == h or host.endswith("." + h) for h in BAD_HOSTS):
+        return True
     haystack = f"{entry['remark']} {entry['host']}".lower()
     if any(s in haystack for s in BAD_SUBSTRINGS):
         return True
