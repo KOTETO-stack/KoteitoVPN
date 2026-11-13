@@ -1,5 +1,5 @@
 {
- "updated_utc": "2026-11-13T00:28:15",
+ "updated_utc": "2026-11-13T08:01:09",
  "rkn": {
   "sources": {
    "antifilter_allyouneed": 16671,
@@ -7,14 +7,14 @@
   },
   "ranges": 16175,
   "penalty_ms": 250,
-  "pool_total": 763,
-  "pool_flagged": 104,
+  "pool_total": 754,
+  "pool_flagged": 103,
   "flagged_servers": [
    {
-    "ip": "188.164.248.67",
-    "country": "NL",
-    "asn": 209242,
-    "name": "🇳🇱 Нидерланды Амстердам"
+    "ip": "208.103.161.16",
+    "country": "US",
+    "asn": 33191,
+    "name": "🇺🇸 США Сан-Франциско"
    },
    {
     "ip": "185.162.230.30",
@@ -23,16 +23,46 @@
     "name": "🇬🇧 Великобритания Саутпорт"
    },
    {
-    "ip": "94.247.142.1",
-    "country": "US",
+    "ip": "188.164.248.123",
+    "country": "NL",
     "asn": 209242,
-    "name": "🇺🇸 США Хьюстон"
+    "name": "🇳🇱 Нидерланды Амстердам"
    },
    {
-    "ip": "104.239.72.227",
-    "country": "CY",
+    "ip": "45.12.30.30",
+    "country": "GB",
     "asn": 209242,
-    "name": "🇨🇾 Кипр Никосия"
+    "name": "🇬🇧 Великобритания Сити"
+   },
+   {
+    "ip": "172.236.227.60",
+    "country": "US",
+    "asn": 63949,
+    "name": "🇺🇸 США Лос-Анджелес"
+   },
+   {
+    "ip": "172.235.51.71",
+    "country": "US",
+    "asn": 63949,
+    "name": "🇺🇸 США Лос-Анджелес"
+   },
+   {
+    "ip": "45.130.125.190",
+    "country": "SC",
+    "asn": 13335,
+    "name": "🇸🇨 Сейшельские Острова Виктория"
+   },
+   {
+    "ip": "104.168.132.109",
+    "country": "US",
+    "asn": 54290,
+    "name": "🇺🇸 США Сиэтл"
+   },
+   {
+    "ip": "188.164.248.67",
+    "country": "NL",
+    "asn": 209242,
+    "name": "🇳🇱 Нидерланды Амстердам"
    },
    {
     "ip": "154.197.75.30",
@@ -41,31 +71,19 @@
     "name": "🇩🇪 Германия Франкфурт"
    },
    {
-    "ip": "208.103.161.16",
+    "ip": "66.163.114.45",
     "country": "US",
-    "asn": 33191,
-    "name": "🇺🇸 США Сан-Франциско"
+    "asn": 63023,
+    "name": "🇺🇸 США Денвер"
+   },
+   {
+    "ip": "153.52.255.15",
+    "country": "SG",
+    "asn": null,
+    "name": "🇸🇬 Сингапур Сингапур"
    },
    {
     "ip": "66.163.114.114",
-    "country": "US",
-    "asn": 63023,
-    "name": "🇺🇸 США Денвер"
-   },
-   {
-    "ip": "66.163.114.132",
-    "country": "US",
-    "asn": 63023,
-    "name": "🇺🇸 США Денвер"
-   },
-   {
-    "ip": "66.163.114.126",
-    "country": "US",
-    "asn": 63023,
-    "name": "🇺🇸 США Денвер"
-   },
-   {
-    "ip": "66.163.114.166",
     "country": "US",
     "asn": 63023,
     "name": "🇺🇸 США Денвер"
@@ -77,22 +95,34 @@
     "name": "🇺🇸 США Денвер"
    },
    {
-    "ip": "66.163.114.45",
+    "ip": "66.163.114.132",
     "country": "US",
     "asn": 63023,
     "name": "🇺🇸 США Денвер"
    },
    {
-    "ip": "45.130.125.190",
-    "country": "SC",
-    "asn": 13335,
-    "name": "🇸🇨 Сейшельские Острова Виктория"
+    "ip": "66.163.114.166",
+    "country": "US",
+    "asn": 63023,
+    "name": "🇺🇸 США Денвер"
    },
    {
-    "ip": "104.18.37.127",
-    "country": "CA",
-    "asn": 13335,
-    "name": "🇨🇦 Канада Торонто"
+    "ip": "104.239.72.227",
+    "country": "CY",
+    "asn": 209242,
+    "name": "🇨🇾 Кипр Никосия"
+   },
+   {
+    "ip": "94.247.142.1",
+    "country": "US",
+    "asn": 209242,
+    "name": "🇺🇸 США Хьюстон"
+   },
+   {
+    "ip": "66.163.114.126",
+    "country": "US",
+    "asn": 63023,
+    "name": "🇺🇸 США Денвер"
    },
    {
     "ip": "209.200.246.148",
@@ -101,40 +131,10 @@
     "name": "🇨🇦 Канада Торонто"
    },
    {
-    "ip": "172.236.227.60",
-    "country": "US",
-    "asn": 63949,
-    "name": "🇺🇸 США Лос-Анджелес"
-   },
-   {
-    "ip": "104.168.132.109",
-    "country": "US",
-    "asn": 54290,
-    "name": "🇺🇸 США Сиэтл"
-   },
-   {
-    "ip": "172.235.51.71",
-    "country": "US",
-    "asn": 63949,
-    "name": "🇺🇸 США Лос-Анджелес"
-   },
-   {
-    "ip": "83.147.18.75",
-    "country": "GB",
-    "asn": 215311,
-    "name": "🇬🇧 Великобритания Лондон"
-   },
-   {
-    "ip": "188.116.27.6",
-    "country": "NL",
-    "asn": 58061,
-    "name": "🇳🇱 Нидерланды Меппел"
-   },
-   {
-    "ip": "206.166.251.70",
-    "country": "NL",
-    "asn": 399629,
-    "name": "🇳🇱 Нидерланды Амстердам"
+    "ip": "103.201.131.202",
+    "country": "JP",
+    "asn": 3258,
+    "name": "🇯🇵 Япония Токио"
    },
    {
     "ip": "152.42.130.189",
@@ -143,16 +143,136 @@
     "name": "🇳🇱 Нидерланды Амстердам"
    },
    {
+    "ip": "168.100.9.41",
+    "country": "NL",
+    "asn": 399629,
+    "name": "🇳🇱 Нидерланды Амстердам"
+   },
+   {
+    "ip": "188.116.27.6",
+    "country": "NL",
+    "asn": 58061,
+    "name": "🇳🇱 Нидерланды Меппел"
+   },
+   {
+    "ip": "168.100.9.41",
+    "country": "NL",
+    "asn": 399629,
+    "name": "🇳🇱 Нидерланды Амстердам"
+   },
+   {
+    "ip": "206.166.251.70",
+    "country": "NL",
+    "asn": 399629,
+    "name": "🇳🇱 Нидерланды Амстердам"
+   },
+   {
+    "ip": "145.223.68.58",
+    "country": "FR",
+    "asn": 215311,
+    "name": "🇫🇷 Франция Париж"
+   },
+   {
+    "ip": "83.147.18.75",
+    "country": "GB",
+    "asn": 215311,
+    "name": "🇬🇧 Великобритания Лондон"
+   },
+   {
     "ip": "82.118.19.153",
     "country": "DE",
     "asn": 21100,
     "name": "🇩🇪 ФРГ Дюссельдорф"
    },
    {
+    "ip": "45.95.96.219",
+    "country": "DE",
+    "asn": 197354,
+    "name": "🇩🇪 Германия Франкфурт"
+   },
+   {
+    "ip": "195.123.245.241",
+    "country": "CZ",
+    "asn": 204957,
+    "name": "🇨🇿 Чехия Прага"
+   },
+   {
+    "ip": "185.178.208.167",
+    "country": "RU",
+    "asn": 57724,
+    "name": "🇷🇺 Россия Ростов-на-Дону"
+   },
+   {
+    "ip": "208.69.78.222",
+    "country": "CH",
+    "asn": 63023,
+    "name": "🇨🇭 Швейцария Цюрих"
+   },
+   {
+    "ip": "87.199.205.28",
+    "country": "NL",
+    "asn": 216071,
+    "name": "🇳🇱 Нидерланды Амстердам"
+   },
+   {
+    "ip": "45.95.96.211",
+    "country": "DE",
+    "asn": 197354,
+    "name": "🇩🇪 Германия Франкфурт"
+   },
+   {
+    "ip": "45.192.12.106",
+    "country": "PL",
+    "asn": 197574,
+    "name": "🇵🇱 Польша Варшава"
+   },
+   {
+    "ip": "138.124.124.157",
+    "country": "SE",
+    "asn": 210644,
+    "name": "🇸🇪 Швеция Стокгольм"
+   },
+   {
+    "ip": "38.244.155.67",
+    "country": "EE",
+    "asn": 34702,
+    "name": "🇪🇪 Эстония Таллин"
+   },
+   {
+    "ip": "94.26.35.217",
+    "country": "CH",
+    "asn": 51852,
+    "name": "🇨🇭 Швейцария Цюрих"
+   },
+   {
+    "ip": "82.118.16.187",
+    "country": "IT",
+    "asn": 21100,
+    "name": "🇮🇹 Италия Милан"
+   },
+   {
+    "ip": "82.118.16.189",
+    "country": "IT",
+    "asn": 21100,
+    "name": "🇮🇹 Италия Милан"
+   },
+   {
+    "ip": "208.69.78.29",
+    "country": "CH",
+    "asn": 63023,
+    "name": "🇨🇭 Швейцария Цюрих"
+   },
+   {
     "ip": "146.103.118.189",
     "country": "NL",
     "asn": 216071,
     "name": "🇳🇱 Нидерланды Амстердам"
+   },
+   {
+    "ip": "208.69.78.60",
+    "country": "CH",
+    "asn": 63023,
+    "name": "🇨🇭 Швейцария Цюрих"
    },
    {
     "ip": "144.31.140.125",
@@ -167,22 +287,10 @@
     "name": "🇫🇷 Франция Страсбург"
    },
    {
-    "ip": "145.223.68.58",
-    "country": "FR",
-    "asn": 215311,
-    "name": "🇫🇷 Франция Париж"
-   },
-   {
-    "ip": "45.95.96.219",
-    "country": "DE",
-    "asn": 197354,
-    "name": "🇩🇪 Германия Франкфурт"
-   },
-   {
-    "ip": "45.95.96.211",
-    "country": "DE",
-    "asn": 197354,
-    "name": "🇩🇪 Германия Франкфурт"
+    "ip": "94.183.234.245",
+    "country": "LV",
+    "asn": 56971,
+    "name": "🇱🇻 Латвия Рига"
    },
    {
     "ip": "208.69.78.208",
@@ -191,106 +299,10 @@
     "name": "🇨🇭 Швейцария Цюрих"
    },
    {
-    "ip": "195.123.245.241",
-    "country": "CZ",
-    "asn": 204957,
-    "name": "🇨🇿 Чехия Прага"
-   },
-   {
-    "ip": "38.244.155.67",
-    "country": "EE",
-    "asn": 34702,
-    "name": "🇪🇪 Эстония Таллин"
-   },
-   {
-    "ip": "208.69.78.60",
-    "country": "CH",
-    "asn": 63023,
-    "name": "🇨🇭 Швейцария Цюрих"
-   },
-   {
-    "ip": "94.26.35.217",
-    "country": "CH",
-    "asn": 51852,
-    "name": "🇨🇭 Швейцария Цюрих"
-   },
-   {
-    "ip": "138.124.49.108",
-    "country": "SE",
-    "asn": 210644,
-    "name": "🇸🇪 Швеция Стокгольм"
-   },
-   {
-    "ip": "138.124.124.157",
-    "country": "SE",
-    "asn": 210644,
-    "name": "🇸🇪 Швеция Стокгольм"
-   },
-   {
-    "ip": "82.118.16.189",
-    "country": "IT",
-    "asn": 21100,
-    "name": "🇮🇹 Италия Милан"
-   },
-   {
-    "ip": "45.192.12.106",
+    "ip": "150.251.113.34",
     "country": "PL",
-    "asn": 197574,
+    "asn": 215311,
     "name": "🇵🇱 Польша Варшава"
-   },
-   {
-    "ip": "185.178.208.167",
-    "country": "RU",
-    "asn": 57724,
-    "name": "🇷🇺 Россия Ростов-на-Дону"
-   },
-   {
-    "ip": "87.121.82.22",
-    "country": "FI",
-    "asn": 215439,
-    "name": "🇫🇮 Финляндия Хельсинки"
-   },
-   {
-    "ip": "87.199.205.28",
-    "country": "NL",
-    "asn": 216071,
-    "name": "🇳🇱 Нидерланды Амстердам"
-   },
-   {
-    "ip": "208.69.78.222",
-    "country": "CH",
-    "asn": 63023,
-    "name": "🇨🇭 Швейцария Цюрих"
-   },
-   {
-    "ip": "94.183.234.245",
-    "country": "LV",
-    "asn": 56971,
-    "name": "🇱🇻 Латвия Рига"
-   },
-   {
-    "ip": "195.123.226.21",
-    "country": "BG",
-    "asn": 59729,
-    "name": "🇧🇬 Болгария София"
-   },
-   {
-    "ip": "208.69.78.29",
-    "country": "CH",
-    "asn": 63023,
-    "name": "🇨🇭 Швейцария Цюрих"
-   },
-   {
-    "ip": "168.100.9.41",
-    "country": "NL",
-    "asn": 399629,
-    "name": "🇳🇱 Нидерланды Амстердам"
-   },
-   {
-    "ip": "168.100.9.41",
-    "country": "NL",
-    "asn": 399629,
-    "name": "🇳🇱 Нидерланды Амстердам"
    },
    {
     "ip": "91.215.153.162",
@@ -299,28 +311,58 @@
     "name": "🇧🇬 Болгария София"
    },
    {
-    "ip": "212.41.9.190",
-    "country": "RU",
-    "asn": 49505,
-    "name": "🇷🇺 Россия Москва"
-   },
-   {
     "ip": "45.95.96.216",
     "country": "DE",
     "asn": 197354,
     "name": "🇩🇪 Германия Франкфурт"
    },
    {
-    "ip": "103.201.131.202",
-    "country": "JP",
-    "asn": 3258,
-    "name": "🇯🇵 Япония Токио"
+    "ip": "212.41.9.190",
+    "country": "RU",
+    "asn": 49505,
+    "name": "🇷🇺 Россия Москва"
+   },
+   {
+    "ip": "87.121.82.22",
+    "country": "FI",
+    "asn": 215439,
+    "name": "🇫🇮 Финляндия Хельсинки"
+   },
+   {
+    "ip": "212.41.9.190",
+    "country": "RU",
+    "asn": 49505,
+    "name": "🇷🇺 Россия Москва"
+   },
+   {
+    "ip": "195.123.226.21",
+    "country": "BG",
+    "asn": 59729,
+    "name": "🇧🇬 Болгария София"
+   },
+   {
+    "ip": "131.123.43.103",
+    "country": "BG",
+    "asn": 200019,
+    "name": "🇧🇬 Болгария София"
+   },
+   {
+    "ip": "5.34.177.164",
+    "country": "SG",
+    "asn": 204957,
+    "name": "🇸🇬 Сингапур Сингапур"
    },
    {
     "ip": "201.51.11.65",
     "country": "RU",
     "asn": 9123,
     "name": "🇷🇺 Россия Москва"
+   },
+   {
+    "ip": "150.95.109.109",
+    "country": "VN",
+    "asn": 131392,
+    "name": "🇻🇳 Вьетнам Ханой"
    },
    {
     "ip": "104.171.133.209",
@@ -341,40 +383,10 @@
     "name": "🇷🇺 Россия Москва"
    },
    {
-    "ip": "212.41.9.190",
-    "country": "RU",
-    "asn": 49505,
-    "name": "🇷🇺 Россия Москва"
-   },
-   {
     "ip": "151.241.226.201",
     "country": "TR",
     "asn": 57043,
     "name": "🇹🇷 Турция Стамбул"
-   },
-   {
-    "ip": "131.123.43.103",
-    "country": "BG",
-    "asn": 200019,
-    "name": "🇧🇬 Болгария София"
-   },
-   {
-    "ip": "38.180.38.137",
-    "country": "KZ",
-    "asn": 58061,
-    "name": "🇰🇿 Казахстан Алматы"
-   },
-   {
-    "ip": "5.34.177.164",
-    "country": "SG",
-    "asn": 204957,
-    "name": "🇸🇬 Сингапур Сингапур"
-   },
-   {
-    "ip": "150.95.109.109",
-    "country": "VN",
-    "asn": 131392,
-    "name": "🇻🇳 Вьетнам Ханой"
    },
    {
     "ip": "201.51.12.98",
@@ -389,10 +401,16 @@
     "name": "🇸🇬 Сингапур Сингапур"
    },
    {
-    "ip": "95.129.236.248",
-    "country": "RU",
-    "asn": 57724,
-    "name": "🇷🇺 Россия Ростов-на-Дону"
+    "ip": "38.180.38.137",
+    "country": "KZ",
+    "asn": 58061,
+    "name": "🇰🇿 Казахстан Алматы"
+   },
+   {
+    "ip": "208.69.78.217",
+    "country": "CH",
+    "asn": 63023,
+    "name": "🇨🇭 Швейцария Цюрих"
    },
    {
     "ip": "185.132.53.28",
@@ -401,10 +419,10 @@
     "name": "🇳🇱 Нидерланды Амстердам"
    },
    {
-    "ip": "131.123.41.168",
-    "country": "BG",
-    "asn": 200019,
-    "name": "🇧🇬 Болгария София"
+    "ip": "95.129.236.248",
+    "country": "RU",
+    "asn": 57724,
+    "name": "🇷🇺 Россия Ростов-на-Дону"
    },
    {
     "ip": "131.123.43.87",
@@ -423,18 +441,6 @@
     "country": "DE",
     "asn": 57043,
     "name": "🇩🇪 ФРГ Франкфурт"
-   },
-   {
-    "ip": "208.69.78.217",
-    "country": "CH",
-    "asn": 63023,
-    "name": "🇨🇭 Швейцария Цюрих"
-   },
-   {
-    "ip": "208.69.78.217",
-    "country": "CH",
-    "asn": 63023,
-    "name": "🇨🇭 Швейцария Цюрих"
    },
    {
     "ip": "208.69.78.217",
@@ -621,18 +627,6 @@
     "country": "CH",
     "asn": 63023,
     "name": "🇨🇭 Швейцария Цюрих"
-   },
-   {
-    "ip": "208.69.78.217",
-    "country": "CH",
-    "asn": 63023,
-    "name": "🇨🇭 Швейцария Цюрих"
-   },
-   {
-    "ip": "208.69.78.217",
-    "country": "CH",
-    "asn": 63023,
-    "name": "🇨🇭 Швейцария Цюрих"
    }
   ],
   "list_file": "data/rkn_blocked_cidr.txt",
@@ -640,7 +634,7 @@
  },
  "tspu": {
   "asn_count": 10,
-  "pool_flagged": 235,
+  "pool_flagged": 238,
   "asn": {
    "174": {
     "name": "Cogent",
@@ -685,14 +679,23 @@
   }
  },
  "countries": {
-  "JP": {
-   "servers": 26,
-   "probed": 8,
-   "probe_mean": 1.0,
-   "rkn_share": 0.038,
+  "KR": {
+   "servers": 11,
+   "probed": 2,
+   "probe_mean": 0.5,
+   "rkn_share": 0.0,
    "tspu_share": 0.0,
-   "quality": 0.992,
-   "bonus_ms": 24.0
+   "quality": 0.875,
+   "bonus_ms": 7.6
+  },
+  "HK": {
+   "servers": 12,
+   "probed": 3,
+   "probe_mean": 0.5,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": 0.875,
+   "bonus_ms": 7.6
   },
   "BY": {
    "servers": 8,
@@ -700,73 +703,55 @@
    "probe_mean": null,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
-   "quality": 0.853,
-   "bonus_ms": 7.3
+   "quality": 0.875,
+   "bonus_ms": 7.6
   },
-  "KR": {
-   "servers": 13,
-   "probed": 3,
-   "probe_mean": 0.5,
-   "rkn_share": 0.0,
+  "JP": {
+   "servers": 25,
+   "probed": 5,
+   "probe_mean": 0.8,
+   "rkn_share": 0.04,
    "tspu_share": 0.0,
-   "quality": 0.853,
-   "bonus_ms": 7.3
+   "quality": 0.872,
+   "bonus_ms": 7.2
   },
-  "HK": {
-   "servers": 16,
-   "probed": 3,
-   "probe_mean": 0.0,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": 0.853,
-   "bonus_ms": 7.3
+  "FR": {
+   "servers": 34,
+   "probed": 7,
+   "probe_mean": 0.929,
+   "rkn_share": 0.088,
+   "tspu_share": 0.382,
+   "quality": 0.863,
+   "bonus_ms": 6.1
+  },
+  "NL": {
+   "servers": 85,
+   "probed": 17,
+   "probe_mean": 0.941,
+   "rkn_share": 0.118,
+   "tspu_share": 0.459,
+   "quality": 0.849,
+   "bonus_ms": 4.5
+  },
+  "SE": {
+   "servers": 10,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.1,
+   "tspu_share": 0.1,
+   "quality": 0.835,
+   "bonus_ms": 2.8
   },
   "US": {
    "servers": 150,
-   "probed": 23,
-   "probe_mean": 0.761,
-   "rkn_share": 0.073,
-   "tspu_share": 0.147,
-   "quality": 0.813,
-   "bonus_ms": 2.4
-  },
-  "CA": {
-   "servers": 134,
    "probed": 21,
-   "probe_mean": 1.0,
-   "rkn_share": 0.015,
-   "tspu_share": 0.963,
-   "quality": 0.804,
-   "bonus_ms": 1.4
-  },
-  "SE": {
-   "servers": 11,
-   "probed": 1,
-   "probe_mean": 0.5,
-   "rkn_share": 0.182,
-   "tspu_share": 0.091,
-   "quality": 0.799,
-   "bonus_ms": 0.8
-  },
-  "FI": {
-   "servers": 10,
-   "probed": 2,
-   "probe_mean": 0.5,
-   "rkn_share": 0.1,
-   "tspu_share": 0.2,
-   "quality": 0.793,
-   "bonus_ms": 0.1
-  },
-  "CY": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 1.0,
-   "tspu_share": 1.0,
-   "quality": null,
+   "probe_mean": 0.762,
+   "rkn_share": 0.073,
+   "tspu_share": 0.153,
+   "quality": 0.812,
    "bonus_ms": 0.0
   },
-  "CR": {
+  "BZ": {
    "servers": 1,
    "probed": 0,
    "probe_mean": null,
@@ -784,6 +769,15 @@
    "quality": null,
    "bonus_ms": 0.0
   },
+  "CR": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.0,
+   "tspu_share": 1.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
   "SC": {
    "servers": 1,
    "probed": 0,
@@ -793,161 +787,17 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "BZ": {
+  "CY": {
    "servers": 1,
    "probed": 0,
    "probe_mean": null,
-   "rkn_share": 0.0,
+   "rkn_share": 1.0,
    "tspu_share": 1.0,
    "quality": null,
    "bonus_ms": 0.0
   },
   "MX": {
    "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "ES": {
-   "servers": 4,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "AT": {
-   "servers": 2,
-   "probed": 2,
-   "probe_mean": 1.0,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "CZ": {
-   "servers": 3,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.333,
-   "tspu_share": 0.333,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "EE": {
-   "servers": 6,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.167,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "IT": {
-   "servers": 3,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.333,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "CL": {
-   "servers": 1,
-   "probed": 1,
-   "probe_mean": 0.5,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "LY": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "NG": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "LV": {
-   "servers": 6,
-   "probed": 1,
-   "probe_mean": 0.0,
-   "rkn_share": 0.167,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "RO": {
-   "servers": 4,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.0,
-   "tspu_share": 0.25,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "BG": {
-   "servers": 5,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 1.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "DK": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "AL": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "TR": {
-   "servers": 7,
-   "probed": 2,
-   "probe_mean": 1.0,
-   "rkn_share": 0.143,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "SK": {
-   "servers": 3,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "BR": {
-   "servers": 2,
    "probed": 0,
    "probe_mean": null,
    "rkn_share": 0.0,
@@ -964,6 +814,15 @@
    "quality": null,
    "bonus_ms": 0.0
   },
+  "ES": {
+   "servers": 5,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
   "AU": {
    "servers": 4,
    "probed": 2,
@@ -973,10 +832,163 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "AE": {
+  "CL": {
+   "servers": 1,
+   "probed": 1,
+   "probe_mean": 0.5,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "CZ": {
+   "servers": 3,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.333,
+   "tspu_share": 0.333,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "AT": {
+   "servers": 2,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "IT": {
+   "servers": 4,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.5,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "EE": {
+   "servers": 6,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.167,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "NG": {
+   "servers": 1,
+   "probed": 1,
+   "probe_mean": 0.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "FI": {
+   "servers": 7,
+   "probed": 2,
+   "probe_mean": 0.5,
+   "rkn_share": 0.143,
+   "tspu_share": 0.143,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "LV": {
+   "servers": 5,
+   "probed": 1,
+   "probe_mean": 0.0,
+   "rkn_share": 0.2,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "BR": {
    "servers": 1,
    "probed": 0,
    "probe_mean": null,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "DK": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "BG": {
+   "servers": 4,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 1.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "TR": {
+   "servers": 7,
+   "probed": 3,
+   "probe_mean": 1.0,
+   "rkn_share": 0.143,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "VN": {
+   "servers": 2,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.5,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "RO": {
+   "servers": 3,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.333,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "SK": {
+   "servers": 2,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "MY": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "NE": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "IN": {
+   "servers": 5,
+   "probed": 3,
+   "probe_mean": 0.333,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
@@ -991,29 +1003,20 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "KZ": {
-   "servers": 5,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.2,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "IN": {
-   "servers": 5,
-   "probed": 1,
-   "probe_mean": 0.0,
+  "AE": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
    "bonus_ms": 0.0
   },
-  "VN": {
-   "servers": 2,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.5,
+  "KZ": {
+   "servers": 5,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.2,
    "tspu_share": 0.0,
    "quality": null,
    "bonus_ms": 0.0
@@ -1027,7 +1030,7 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "MY": {
+  "IR": {
    "servers": 1,
    "probed": 0,
    "probe_mean": null,
@@ -1045,87 +1048,78 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "NL": {
-   "servers": 82,
-   "probed": 16,
-   "probe_mean": 0.844,
-   "rkn_share": 0.11,
-   "tspu_share": 0.463,
-   "quality": 0.792,
-   "bonus_ms": -0.1
+  "CA": {
+   "servers": 134,
+   "probed": 19,
+   "probe_mean": 1.0,
+   "rkn_share": 0.007,
+   "tspu_share": 0.963,
+   "quality": 0.806,
+   "bonus_ms": -0.7
+  },
+  "DE": {
+   "servers": 55,
+   "probed": 12,
+   "probe_mean": 0.792,
+   "rkn_share": 0.145,
+   "tspu_share": 0.236,
+   "quality": 0.799,
+   "bonus_ms": -1.6
+  },
+  "RU": {
+   "servers": 21,
+   "probed": 1,
+   "probe_mean": 0.5,
+   "rkn_share": 0.429,
+   "tspu_share": 0.0,
+   "quality": 0.789,
+   "bonus_ms": -2.7
   },
   "GB": {
    "servers": 24,
-   "probed": 10,
-   "probe_mean": 0.75,
-   "rkn_share": 0.083,
+   "probed": 12,
+   "probe_mean": 0.708,
+   "rkn_share": 0.125,
    "tspu_share": 0.25,
-   "quality": 0.783,
-   "bonus_ms": -1.1
-  },
-  "FR": {
-   "servers": 35,
-   "probed": 4,
-   "probe_mean": 0.875,
-   "rkn_share": 0.086,
-   "tspu_share": 0.371,
-   "quality": 0.762,
-   "bonus_ms": -3.7
-  },
-  "RU": {
-   "servers": 19,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.474,
-   "tspu_share": 0.0,
-   "quality": 0.759,
-   "bonus_ms": -4.1
+   "quality": 0.75,
+   "bonus_ms": -7.4
   },
   "PL": {
-   "servers": 20,
-   "probed": 6,
-   "probe_mean": 0.583,
-   "rkn_share": 0.05,
+   "servers": 21,
+   "probed": 5,
+   "probe_mean": 0.6,
+   "rkn_share": 0.095,
    "tspu_share": 0.0,
-   "quality": 0.74,
-   "bonus_ms": -6.3
-  },
-  "DE": {
-   "servers": 50,
-   "probed": 16,
-   "probe_mean": 0.688,
-   "rkn_share": 0.16,
-   "tspu_share": 0.22,
-   "quality": 0.737,
-   "bonus_ms": -6.7
-  },
-  "CH": {
-   "servers": 48,
-   "probed": 2,
-   "probe_mean": 1.0,
-   "rkn_share": 0.812,
-   "tspu_share": 0.0,
-   "quality": 0.691,
-   "bonus_ms": -12.2
+   "quality": 0.741,
+   "bonus_ms": -8.5
   },
   "SG": {
-   "servers": 36,
+   "servers": 35,
    "probed": 10,
-   "probe_mean": 0.55,
-   "rkn_share": 0.056,
-   "tspu_share": 0.167,
-   "quality": 0.686,
-   "bonus_ms": -12.8
+   "probe_mean": 0.65,
+   "rkn_share": 0.086,
+   "tspu_share": 0.171,
+   "quality": 0.739,
+   "bonus_ms": -8.8
+  },
+  "CH": {
+   "servers": 44,
+   "probed": 2,
+   "probe_mean": 1.0,
+   "rkn_share": 0.818,
+   "tspu_share": 0.0,
+   "quality": 0.711,
+   "bonus_ms": -12.1
   }
  },
  "lte": {
   "ok": true,
-  "servers_measured": 86,
-  "networks": 52,
-  "pool_green": 20,
-  "pool_red": 21,
+  "servers_measured": 94,
+  "networks": 55,
+  "pool_green": 18,
+  "pool_red": 25,
   "pool_flaky": 2,
-  "pinned": 11,
+  "pinned": 10,
   "protocols": {
    "other": {
     "g": 3,
@@ -1136,12 +1130,12 @@
     "n": 9
    },
    "vless": {
-    "g": 16,
-    "n": 28
+    "g": 17,
+    "n": 34
    },
    "trojan": {
     "g": 1,
-    "n": 2
+    "n": 3
    }
   },
   "server_bonus_ms": 300,
