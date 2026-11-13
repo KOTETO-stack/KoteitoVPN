@@ -6,6 +6,13 @@
   "asn": "AS13335",
   "net": "CLOUDFLARENET"
  },
+ "102.208.217.14": {
+  "first": "2026-11-13",
+  "last": "2026-11-13",
+  "country": "ZA",
+  "asn": "AS328364",
+  "net": "Host-Africa-AS"
+ },
  "103.133.1.160": {
   "first": "2026-11-06",
   "last": "2026-11-08",
@@ -54,6 +61,13 @@
   "country": "CY",
   "asn": "AS209242",
   "net": "CLOUDFLARESPECTRUM"
+ },
+ "107.189.23.205": {
+  "first": "2026-11-13",
+  "last": "2026-11-13",
+  "country": "NL",
+  "asn": "AS14956",
+  "net": "ROUTERHOSTING"
  },
  "130.12.242.106": {
   "first": "2026-11-05",
