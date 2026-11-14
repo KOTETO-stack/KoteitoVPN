@@ -6,8 +6,8 @@
       "weight": -10
     },
     {
-      "field": "protocol",
-      "value": "vless",
+      "field": "country",
+      "value": "🇷🇺",
       "weight": 5
     },
     {
@@ -21,10 +21,10 @@
       "weight": 2
     },
     {
-      "field": "country",
-      "value": "🇷🇺",
-      "weight": -5
+      "field": "protocol",
+      "value": "vless",
+      "weight": 1
     }
   ],
-  "comment": "Понижаем приоритет hysteria2 и серверов в России из-за проблем с подключением, повышаем приоритет vless, tls и порта 443"
+  "comment": "Приоритезация VPN-серверов для пользователей в России на основе статистики и данных OONI"
 }
