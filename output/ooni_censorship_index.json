@@ -2,76 +2,92 @@
   "country": "RU",
   "test_name": "web_connectivity",
   "pressure_percent": 31.4,
-  "measurements": 691761,
-  "anomaly": 187198,
-  "confirmed": 30351,
+  "measurements": 710364,
+  "anomaly": 192304,
+  "confirmed": 30688,
   "since": "2026-11-11",
   "until": "2026-11-15",
-  "updated_utc": "2026-11-14T14:46:51+00:00",
+  "updated_utc": "2026-11-14T17:10:20+00:00",
   "operators": [
     {
       "asn": "AS39028",
       "name": "",
-      "measurements": 104817,
-      "anomaly": 10876,
-      "confirmed": 21314,
+      "measurements": 104917,
+      "anomaly": 10896,
+      "confirmed": 21330,
       "pressure": 30.7
     },
     {
       "asn": "AS12389",
       "name": "Ростелеком",
-      "measurements": 86056,
-      "anomaly": 27231,
+      "measurements": 87941,
+      "anomaly": 27732,
       "confirmed": 4,
-      "pressure": 31.6
+      "pressure": 31.5
     },
     {
       "asn": "AS8402",
       "name": "",
-      "measurements": 25659,
-      "anomaly": 8795,
-      "confirmed": 10,
-      "pressure": 34.3
+      "measurements": 26164,
+      "anomaly": 9036,
+      "confirmed": 11,
+      "pressure": 34.6
     },
     {
       "asn": "AS42610",
       "name": "",
-      "measurements": 22664,
-      "anomaly": 7154,
+      "measurements": 23275,
+      "anomaly": 7283,
       "confirmed": 0,
-      "pressure": 31.6
+      "pressure": 31.3
     },
     {
       "asn": "AS50716",
       "name": "",
-      "measurements": 19620,
-      "anomaly": 4138,
+      "measurements": 20071,
+      "anomaly": 4234,
       "confirmed": 1,
       "pressure": 21.1
     },
     {
       "asn": "AS25513",
       "name": "",
-      "measurements": 17840,
-      "anomaly": 7210,
-      "confirmed": 31,
-      "pressure": 40.6
+      "measurements": 18342,
+      "anomaly": 7359,
+      "confirmed": 33,
+      "pressure": 40.3
     },
     {
       "asn": "AS24955",
       "name": "",
-      "measurements": 14686,
-      "anomaly": 2690,
+      "measurements": 15166,
+      "anomaly": 2737,
       "confirmed": 0,
-      "pressure": 18.3
+      "pressure": 18.0
     },
     {
       "asn": "AS30922",
       "name": "",
-      "measurements": 12506,
-      "anomaly": 4129,
+      "measurements": 12706,
+      "anomaly": 4199,
       "confirmed": 0,
       "pressure": 33.0
+    },
+    {
+      "asn": "AS33991",
+      "name": "",
+      "measurements": 10474,
+      "anomaly": 3748,
+      "confirmed": 1,
+      "pressure": 35.8
+    },
+    {
+      "asn": "AS34602",
+      "name": "",
+      "measurements": 10398,
+      "anomaly": 3704,
+      "confirmed": 104,
+      "pressure": 36.6
     },
     {
       "asn": "AS51659",
@@ -82,34 +98,18 @@
       "pressure": 4.3
     },
     {
-      "asn": "AS33991",
-      "name": "",
-      "measurements": 10096,
-      "anomaly": 3595,
-      "confirmed": 1,
-      "pressure": 35.6
-    },
-    {
       "asn": "AS35807",
       "name": "",
-      "measurements": 10005,
-      "anomaly": 4140,
+      "measurements": 10323,
+      "anomaly": 4322,
       "confirmed": 0,
-      "pressure": 41.4
-    },
-    {
-      "asn": "AS34602",
-      "name": "",
-      "measurements": 10000,
-      "anomaly": 3564,
-      "confirmed": 103,
-      "pressure": 36.7
+      "pressure": 41.9
     }
   ],
   "blocking_types": {
-    "http-failure": 131108,
-    "dns": 66090,
-    "tcp_ip": 15335,
-    "http-diff": 3145
+    "http-failure": 134540,
+    "dns": 67634,
+    "tcp_ip": 15740,
+    "http-diff": 3242
   }
 }
