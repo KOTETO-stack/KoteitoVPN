@@ -2,34 +2,44 @@
   "rules": [
     {
       "field": "protocol",
-      "value": "hysteria2",
-      "weight": -10
-    },
-    {
-      "field": "country",
-      "value": "🇷🇺",
-      "weight": 5
-    },
-    {
-      "field": "security",
-      "value": "none",
-      "weight": -5
-    },
-    {
-      "field": "port",
-      "value": "443",
-      "weight": 10
-    },
-    {
-      "field": "protocol",
       "value": "vless",
-      "weight": 5
+      "weight": 10
     },
     {
       "field": "security",
       "value": "tls",
-      "weight": 5
+      "weight": 8
+    },
+    {
+      "field": "port",
+      "value": "443",
+      "weight": 12
+    },
+    {
+      "field": "country",
+      "value": "🇨🇦",
+      "weight": 6
+    },
+    {
+      "field": "protocol",
+      "value": "hysteria2",
+      "weight": -15
+    },
+    {
+      "field": "security",
+      "value": "none",
+      "weight": -10
+    },
+    {
+      "field": "port",
+      "value": "8443",
+      "weight": -5
+    },
+    {
+      "field": "country",
+      "value": "🇷🇺",
+      "weight": -8
     }
   ],
-  "comment": "Понижаем приоритет hysteria2 и none, повышаем приоритет серверов в России и с портам 443, tls и vless"
+  "comment": "Пользователям в России рекомендуется использовать vless и tls на порту 443, но избегать hysteria2 и серверов в России"
 }
