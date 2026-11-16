@@ -6,6 +6,21 @@
       "weight": -10
     },
     {
+      "field": "country",
+      "value": "🇷🇺",
+      "weight": 5
+    },
+    {
+      "field": "security",
+      "value": "none",
+      "weight": -5
+    },
+    {
+      "field": "port",
+      "value": "443",
+      "weight": 10
+    },
+    {
       "field": "protocol",
       "value": "vless",
       "weight": 5
@@ -13,18 +28,18 @@
     {
       "field": "security",
       "value": "reality",
-      "weight": 3
+      "weight": 5
     },
     {
       "field": "port",
-      "value": "443",
-      "weight": 8
+      "value": "8443",
+      "weight": -3
     },
     {
-      "field": "country",
-      "value": "🇷🇺",
-      "weight": -5
+      "field": "protocol",
+      "value": "trojan",
+      "weight": -3
     }
   ],
-  "comment": "Протокол hysteria2 имеет низкий приоритет из-за проблем с подключением, в то время как vless и reality имеют более высокий приоритет"
+  "comment": "Приоритезация VPN-серверов для пользователей в России на основе статистики и данных OONI"
 }
