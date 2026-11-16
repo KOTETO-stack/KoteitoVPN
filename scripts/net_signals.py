@@ -970,7 +970,7 @@ class Signals:
                     "pinned": len(getattr(self, "_pinned", [])),
                     "night_survivors": len(getattr(self, "_night", [])),
                     "protocols": {k: dict(v) for k, v in self.lte.proto_stats.items()},
-                    "server_bonus_ms": LTE_SERVER_BONUS_PLACEHOLDER,
+                    "server_bonus_ms": LTE_SERVER_GREEN_BONUS_MS,
                     "server_penalty_ms": LTE_SERVER_RED_PENALTY_MS,
                     "network_max_ms": LTE_ASN_MAX_MS,
                 },
