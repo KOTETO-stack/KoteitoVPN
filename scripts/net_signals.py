@@ -22,10 +22,13 @@ net_signals.py
     - Свежесть. Вес замера зависит от возраста по дате в метке («ГГГГ-ММ-ДД ЧЧ:ММ», время
       московское): до 3 дней 1.0, до 7 дней 0.8, до 14 дней 0.5, до 30 дней 0.25; старые
       строки без даты («день», «ночь», «26окт») весят LTE_LEGACY_WEIGHT.
+    - Ночь. С 23:00 до 06:59 по Москве на мобильной сети почти ничего не работает, поэтому
+      красный ночной замер не считается вовсе, если у сервера есть другие замеры: он не
+      делает сервер «мигающим» и не отнимает у него закрепление. Если у сервера только ночные
+      красные замеры, штраф умножается на LTE_NIGHT_RED_FACTOR. Зелёный ночной замер даёт
+      добавку LTE_NIGHT_GREEN_EXTRA_MS («ночной выживший»), ночью выбирать не из чего.
     - Прямой замер. Сервер, зелёный в последнем замере (не мигал), получает бонус
       LTE_SERVER_GREEN_BONUS_MS * вес; красный получает штраф LTE_SERVER_RED_PENALTY_MS * вес.
-      Красный замер ночью (00:00-06:59 по Москве) считается вдвое слабее: ночью красное не
-      всегда мёртвое.
     - Закрепление. Сервер, зелёный на LTE не позже LTE_PIN_DAYS дней назад, build_subscription.py
       ставит в самый верх и не режет лимитом на страну.
     - Серверы без своего замера оцениваются по свежим замерам (не старше LTE_STATS_DAYS дней):
@@ -93,8 +96,10 @@ LTE_SERVER_GREEN_BONUS_MS = 300   # бонус серверу, зелёному 
 LTE_SERVER_RED_PENALTY_MS = 250   # штраф серверу, красному в последнем замере (умножается на вес свежести)
 LTE_PIN_DAYS = 7                  # зелёный замер не старше стольких дней закрепляет сервер вверху подписок
 LTE_LEGACY_WEIGHT = 0.35          # вес замера без читаемой даты в метке (старые строки «день», «ночь»)
-LTE_NIGHT_HOURS = (0, 7)          # красный замер с 00:00 до 06:59 по Москве считается слабее
-LTE_NIGHT_RED_FACTOR = 0.5        # во сколько раз слабее штраф за ночной красный замер
+LTE_NIGHT_HOURS = (23, 7)         # ночь по Москве: с 23:00 до 06:59 (окно переходит через полночь)
+LTE_NIGHT_RED_FACTOR = 0.3        # во сколько раз слабее штраф, если у сервера только ночные красные замеры
+LTE_NIGHT_GREEN_EXTRA_MS = 100    # добавка к бонусу серверу, зелёному ночью («ночной выживший»)
+LTE_NIGHT_GREEN_DAYS = 14         # ночной зелёный замер учитывается, если не старше стольких дней
 LTE_STATS_DAYS = 14               # в сводки по протоколам и подсетям идут замеры не старше стольких дней
 
 LTE_ASN_MAX_MS = 60               # потолок эффекта по сети для серверов без своего замера
@@ -137,6 +142,38 @@ def parse_label_time(label):
                         int(m.group(4) or 12), int(m.group(5) or 0), tzinfo=MSK)
     except ValueError:
         return None
+
+
+def is_night_time(t):
+    """True, если время t (московское) попадает в ночное окно LTE_NIGHT_HOURS."""
+    if t is None:
+        return False
+    start, end = LTE_NIGHT_HOURS
+    if start > end:
+        return t.hour >= start or t.hour < end
+    return start <= t.hour < end
+
+
+def is_night_label(label, t):
+    """Ночной ли замер: по времени в метке, а у старых меток без даты по слову «ночь»."""
+    if t is not None:
+        return is_night_time(t)
+    return "ноч" in (label or "").lower()
+
+
+def weight_for_age(age):
+    """Вес замера по возрасту в днях (None: старая метка без даты)."""
+    if age is None:
+        return LTE_LEGACY_WEIGHT
+    if age <= 3:
+        return 1.0
+    if age <= 7:
+        return 0.8
+    if age <= 14:
+        return 0.5
+    if age <= 30:
+        return 0.25
+    return 0.1
 
 
 def proto_from_text(text):
@@ -371,7 +408,7 @@ class LteLayer:
             _ip, _sep, port = key.rpartition(":")
             rec = {"ip": s["ip"], "asn": asn_number(s["asn"]), "g": s["g"], "r": s["r"],
                    "last": s["last"], "flaky": bool(s["flaky"]), "key": key,
-                   "t": None, "desc": "", "proto": "other"}
+                   "t": None, "desc": "", "proto": "other", "night_g_t": None}
             self.servers[key] = rec
             for h in s["hosts"]:
                 self.by_host["%s:%s" % (h, port)] = rec
@@ -386,7 +423,8 @@ class LteLayer:
 
     def _attach_times(self):
         """Время и описание последнего замера каждого сервера (по дате в метке lte_results.txt).
-        Файл идёт по порядку времени, поэтому побеждает последняя строка сервера."""
+        Файл идёт по порядку времени, поэтому побеждает последняя строка сервера.
+        Заодно применяет правило ночи: красные ночные замеры не считаются."""
         index = {}
         for key, rec in self.servers.items():
             index[key.lower()] = rec
@@ -397,6 +435,7 @@ class LteLayer:
                 lines = f.read().splitlines()
         except OSError:
             return
+        history = {}    # id(записи) -> [(время, G или R, метка)] по порядку строк
         for line in lines:
             s = line.strip()
             if not s or s.startswith("#"):
@@ -407,10 +446,35 @@ class LteLayer:
             rec = index.get(parts[2].lower())
             if rec is None:
                 continue
-            rec["t"] = parse_label_time(parts[0])
+            t = parse_label_time(parts[0])
+            rec["t"] = t
             rec["desc"] = parts[3] if len(parts) > 3 else ""
+            history.setdefault(id(rec), []).append((t, parts[1].upper(), parts[0]))
         for rec in self.servers.values():
             rec["proto"] = proto_from_text(rec.get("desc", ""))
+            self._apply_night_rule(rec, history.get(id(rec), []))
+
+    def _apply_night_rule(self, rec, rows):
+        """Красный замер ночью не считается: ночью красное не значит, что сервер мёртвый.
+        Если у сервера есть замеры вне ночных красных, его состояние (зелёных, красных, последний
+        замер, мигание, время) пересчитывается без них. Если ночные красные единственные,
+        запись остаётся как есть (штраф потом смягчит LTE_NIGHT_RED_FACTOR).
+        Самый свежий зелёный замер ночью запоминается в night_g_t."""
+        marked = [(t, res, is_night_label(label, t)) for t, res, label in rows]
+        rec["night_g_t"] = None
+        for t, res, night in marked:
+            if res == "G" and night and t is not None:
+                if rec["night_g_t"] is None or t > rec["night_g_t"]:
+                    rec["night_g_t"] = t
+        kept = [(t, res) for t, res, night in marked if not (res == "R" and night)]
+        if not kept or len(kept) == len(marked):
+            return
+        greens = sum(1 for _t, res in kept if res == "G")
+        reds = len(kept) - greens
+        rec["g"], rec["r"] = greens, reds
+        rec["last"] = kept[-1][1]
+        rec["t"] = kept[-1][0]
+        rec["flaky"] = greens > 0 and reds > 0
 
     def match(self, c, ip):
         port = c.get("port")
@@ -428,18 +492,15 @@ class LteLayer:
 
     def weight(self, rec):
         """Вес замера по его возрасту."""
-        age = self.age_days(rec)
-        if age is None:
-            return LTE_LEGACY_WEIGHT
-        if age <= 3:
-            return 1.0
-        if age <= 7:
-            return 0.8
-        if age <= 14:
-            return 0.5
-        if age <= 30:
-            return 0.25
-        return 0.1
+        return weight_for_age(self.age_days(rec))
+
+    def night_green_age(self, rec):
+        """Возраст (дни) ночного зелёного замера или None, если его нет или он старше LTE_NIGHT_GREEN_DAYS."""
+        t = rec.get("night_g_t")
+        if t is None:
+            return None
+        age = max(0.0, (self.now - t).total_seconds() / 86400.0)
+        return age if age <= LTE_NIGHT_GREEN_DAYS else None
 
     def pinned(self, c, ip):
         """True: сервер зелёный на LTE (последний замер, не мигает) не позже LTE_PIN_DAYS дней назад."""
@@ -448,6 +509,13 @@ class LteLayer:
             return False
         age = self.age_days(rec)
         return age is not None and age <= LTE_PIN_DAYS
+
+    def night_survivor(self, c, ip):
+        """True: сервер зелёный (не мигает) и был зелёным ночью не позже LTE_NIGHT_GREEN_DAYS дней назад."""
+        rec = self.match(c, ip)
+        if rec is None or rec["flaky"] or rec["last"] != "G":
+            return False
+        return self.night_green_age(rec) is not None
 
     def compute_priors(self):
         """Доли зелёных по протоколам и подсетям /24 по свежим замерам (не старше LTE_STATS_DAYS дней)."""
@@ -485,12 +553,13 @@ class LteLayer:
                 return 0.0
             w = self.weight(rec)
             if rec["last"] == "G":
-                return -float(LTE_SERVER_GREEN_BONUS_MS) * w
+                bonus = float(LTE_SERVER_GREEN_BONUS_MS) * w
+                night_age = self.night_green_age(rec)
+                if night_age is not None:
+                    bonus += float(LTE_NIGHT_GREEN_EXTRA_MS) * weight_for_age(night_age)
+                return -bonus
             if rec["last"] == "R":
-                factor = 1.0
-                t = rec.get("t")
-                if t is not None and LTE_NIGHT_HOURS[0] <= t.hour < LTE_NIGHT_HOURS[1]:
-                    factor = LTE_NIGHT_RED_FACTOR
+                factor = LTE_NIGHT_RED_FACTOR if is_night_time(rec.get("t")) else 1.0
                 return float(LTE_SERVER_RED_PENALTY_MS) * w * factor
         return self.unmeasured_ms(c, ip, asn)
 
@@ -537,6 +606,7 @@ class Signals:
         self._memo = {}
         self._lte_memo = {}
         self._pinned = []
+        self._night = []
 
     # --- поиск IP и сети сервера ---
     def lookup(self, c):
@@ -583,6 +653,15 @@ class Signals:
             return False
         try:
             return self.lte.pinned(c, self.evaluate(c)["ip"])
+        except Exception:
+            return False
+
+    def is_night_survivor(self, c):
+        """True: сервер зелёный на LTE и был зелёным ночью (с 23:00 до 07:00) не позже LTE_NIGHT_GREEN_DAYS дней назад."""
+        if not self.lte.ok:
+            return False
+        try:
+            return self.lte.night_survivor(c, self.evaluate(c)["ip"])
         except Exception:
             return False
 
@@ -662,14 +741,18 @@ class Signals:
                 s["probe"].append(r)
 
         self._pinned = []
+        self._night = []
         if self.lte.ok:
             try:
                 self.lte.compute_priors()
             except Exception as err:
                 log("Замеры LTE: сводки по протоколам и подсетям не посчитаны (%s)" % err)
             for c in configs:
+                name = c.get("display_name") or c.get("remark") or "VPN"
                 if self.is_lte_pinned(c):
-                    self._pinned.append(c.get("display_name") or c.get("remark") or "VPN")
+                    self._pinned.append(name)
+                if self.is_night_survivor(c):
+                    self._night.append(name)
 
         if total and self.rkn.count > 0 and rkn_total / float(total) > RKN_EXCLUDE_MAX_SHARE:
             self.exclude_active = False
@@ -765,6 +848,15 @@ class Signals:
         if pinned:
             log("::group::Закреплённые серверы (зелёные на LTE)")
             for name in pinned:
+                log(name)
+            log("::endgroup::")
+        night = getattr(self, "_night", [])
+        log("Замеры LTE: ночных выживших (зелёные с %02d:00 до %02d:00 по Москве, не старше %d дн.): %d; "
+            "красные ночные замеры не считаются."
+            % (LTE_NIGHT_HOURS[0], LTE_NIGHT_HOURS[1], LTE_NIGHT_GREEN_DAYS, len(night)))
+        if night:
+            log("::group::Ночные выжившие (зелёные ночью)")
+            for name in night:
                 log(name)
             log("::endgroup::")
         if self.lte.proto_stats:
@@ -876,8 +968,9 @@ class Signals:
                     "networks": len(self.lte.asn),
                     "pool_green": pool["G"], "pool_red": pool["R"], "pool_flaky": pool["flaky"],
                     "pinned": len(getattr(self, "_pinned", [])),
+                    "night_survivors": len(getattr(self, "_night", [])),
                     "protocols": {k: dict(v) for k, v in self.lte.proto_stats.items()},
-                    "server_bonus_ms": LTE_SERVER_GREEN_BONUS_MS,
+                    "server_bonus_ms": LTE_SERVER_BONUS_PLACEHOLDER,
                     "server_penalty_ms": LTE_SERVER_RED_PENALTY_MS,
                     "network_max_ms": LTE_ASN_MAX_MS,
                 },
