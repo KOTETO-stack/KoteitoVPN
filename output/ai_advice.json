@@ -8,38 +8,38 @@
     {
       "field": "country",
       "value": "🇷🇺",
-      "weight": 5
+      "weight": -5
     },
     {
       "field": "security",
       "value": "none",
-      "weight": -5
+      "weight": -8
     },
     {
       "field": "port",
       "value": "443",
-      "weight": 10
+      "weight": 5
     },
     {
       "field": "protocol",
       "value": "vless",
-      "weight": 5
+      "weight": 3
     },
     {
       "field": "security",
       "value": "reality",
-      "weight": 5
+      "weight": 2
+    },
+    {
+      "field": "country",
+      "value": "🇺🇸",
+      "weight": 1
     },
     {
       "field": "port",
       "value": "8443",
-      "weight": -3
-    },
-    {
-      "field": "protocol",
-      "value": "trojan",
-      "weight": -3
+      "weight": 1
     }
   ],
-  "comment": "Приоритезация VPN-серверов для пользователей в России на основе статистики и данных OONI"
+  "comment": "Понижаем приоритет hysteria2 и серверов в России, а также повышаем приоритет серверов с протоколом vless и безопасностью reality"
 }
