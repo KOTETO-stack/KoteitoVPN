@@ -38,6 +38,9 @@ build_subscription.py
    лучшие по проверке из РФ (ru_probe.json), затем без данных проверки;
  - затем зарубежные серверы, которые ответили из РФ не менее чем у доли
    MOBILE_MIN_PROBE узлов;
+ - серверы из ТСПУ-сетей (в основном Cloudflare) в добавку не берутся
+   (MOBILE_EXCLUDE_TSPU = True): они отвечают российской точке, но на LTE
+   обычно красные; число пропущенных пишется в лог;
  - названия не меняются, отдельной подписки нет;
  - без повторов между подписками и с уже вошедшими серверами;
  - список добавленных серверов пишется в output/subscription_mobile_list.txt
@@ -139,6 +142,7 @@ PROBE_TTL_HOURS = 48                  # старше этого результа
 
 SIGNALS_ENABLED = True                # списки РКН, сети ТСПУ, приоритет стран (scripts/net_signals.py)
 MOBILE_EXCLUDE_RKN = True             # в мобильную добавку не берём серверы из списков РКН
+MOBILE_EXCLUDE_TSPU = True            # в мобильную добавку не берём серверы из ТСПУ-сетей (False = как раньше)
 
 MOBILE_QUOTA = 40                     # серверов мобильной добавки в КАЖДУЮ подписку (0 = выключено)
 MOBILE_COUNTRIES = {"RU"}             # страны, которые берём ТОЛЬКО для мобильной добавки
@@ -568,16 +572,37 @@ def pad_to_ten(group, leftovers):
     return group
 
 
+def is_tspu_server(sig, c):
+    """True/False: сервер в ТСПУ-сети; None, если определить не удалось.
+    Пробует методы net_signals.Signals по очереди, затем поля evaluate(c)."""
+    for name in ("is_tspu", "in_tspu", "is_tspu_net"):
+        fn = getattr(sig, name, None)
+        if callable(fn):
+            try:
+                return bool(fn(c))
+            except Exception:
+                return None
+    try:
+        e = sig.evaluate(c)
+    except Exception:
+        return None
+    if isinstance(e, dict):
+        for key in ("tspu", "is_tspu", "in_tspu"):
+            if key in e:
+                return bool(e[key])
+    return None
+
+
 def pick_mobile(configs, groups, sort_key, probe, sig=None):
     """Выбирает кандидатов мобильной добавки из нашего же пула.
     Порядок: серверы из MOBILE_COUNTRIES (лучшие по проверке из РФ, потом без
     данных), затем зарубежные, ответившие из РФ не менее чем у MOBILE_MIN_PROBE.
     Серверы, уже вошедшие в подписки, пропускаются; серверы из списков РКН тоже
-    (если MOBILE_EXCLUDE_RKN)."""
+    (если MOBILE_EXCLUDE_RKN), и серверы из ТСПУ-сетей (если MOBILE_EXCLUDE_TSPU)."""
     now_ts = time.time()
     seen = {c["raw"].split("#", 1)[0] for g in groups for c in g}
     cands = []
-    ru_total = ru_probed = foreign_ok = rkn_skipped = 0
+    ru_total = ru_probed = foreign_ok = rkn_skipped = tspu_skipped = tspu_unknown = 0
     for c in configs:
         base = c.get("raw", "").split("#", 1)[0]
         if not base or base in seen or not vless_allowed(c) or not has_valid_address(c):
@@ -590,6 +615,13 @@ def pick_mobile(configs, groups, sort_key, probe, sig=None):
                     continue
             except Exception:
                 pass
+        if sig is not None and MOBILE_EXCLUDE_TSPU:
+            verdict = is_tspu_server(sig, c)
+            if verdict is None:
+                tspu_unknown += 1
+            elif verdict:
+                tspu_skipped += 1
+                continue
         ratio = probe_ratio(c, probe, now_ts)
         is_mob_country = c.get("country_code", "??") in MOBILE_COUNTRIES
         if is_mob_country:
@@ -608,7 +640,11 @@ def pick_mobile(configs, groups, sort_key, probe, sig=None):
     cands.sort(key=lambda t: t[:3])
     print(f"Мобильная добавка: серверов из {sorted(MOBILE_COUNTRIES)} в пуле {ru_total} "
           f"(с проверкой из РФ {ru_probed}), зарубежных с ответом из РФ {foreign_ok}, "
-          f"пропущено из-за списков РКН {rkn_skipped}, кандидатов {len(cands)}.")
+          f"пропущено из-за списков РКН {rkn_skipped}, из-за ТСПУ-сетей {tspu_skipped}, "
+          f"кандидатов {len(cands)}.")
+    if MOBILE_EXCLUDE_TSPU and sig is not None and tspu_unknown:
+        print(f"ВНИМАНИЕ: у {tspu_unknown} серверов не удалось определить ТСПУ-сеть "
+              f"(в net_signals.py нет is_tspu и поля tspu в evaluate), они не отсеяны.")
     out = []
     for t in cands:
         item = dict(t[3])
@@ -843,6 +879,12 @@ def main():
             written.append((i, group))
 
     print_asn_map(written, load_asn())
+
+    try:
+        import build_singbox
+        build_singbox.main()
+    except Exception as e:
+        print("sing-box подписка пропущена: %s" % e)
 
 
 if __name__ == "__main__":
