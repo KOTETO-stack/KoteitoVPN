@@ -1,891 +1,103 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-build_subscription.py
-Финальный шаг workflow. Делит ОДИН пул конфигов на SUBSCRIPTION_COUNT подписок.
-Серверы в подписках не повторяются (кроме закреплённых, см. ниже).
-
- Подписка 1 -> output/subscription.txt
- Подписка 2 -> output/subscription_cellular.txt (старое имя файла сохранено)
- Подписка 3 -> output/subscription_3.txt и т.д.
-
-Как делится пул:
- - конфиги сортируются по sort_key (пинг с бонусами Reality, стабильных транспортов,
-   маскировки, подтверждений пользователей, давления блокировок и советов ИИ;
-   штраф за недоступность из РФ по output/ru_probe.json);
- - серверы, зелёные на мобильной сети не позже LTE_PIN_DAYS дней назад (lte_results.txt),
-   закрепляются: идут первыми и не режутся лимитом MAX_PER_COUNTRY (всё равно не больше
-   MAX_SERVERS в подписке);
- - закреплённые не режутся и фильтрами: страны из EXCLUDED_COUNTRIES (Россия) и vless без
-   Reality и TLS для них не действуют, потому что замер на твоей сети сильнее
-   (PINNED_IGNORE_FILTERS = True);
- - закреплённые попадают В КАЖДУЮ подписку (PIN_IN_ALL_SUBSCRIPTIONS = True), остальные
-   серверы без повторов; False возвращает старое поведение, когда закреплённые делятся
-   по кругу между подписками;
- - лучшие раздаются по кругу;
- - в подписке не больше MAX_SERVERS серверов и MAX_PER_COUNTRY на страну;
- - серверы из EXCLUDED_COUNTRIES (Россия) в основной пул не берутся;
- - vless без Reality и TLS не берётся;
- - записи без адреса или порта (мусор в источниках) в подписки не берутся;
- - подписка добивается запасными до круглого десятка (каждый запасной один раз).
-
-Названия: порядковые номера в конце («-1», «-2», «Лос-Анджелес-3») убираются при записи
-подписок (STRIP_SERVER_NUMBERS = True). Подтверждения пользователей ищутся и по очищенному
-названию, и по старому с номером.
-
-Мобильная добавка (MOBILE_QUOTA серверов в КАЖДУЮ подписку), из НАШЕГО пула:
- - сначала серверы из России (MOBILE_COUNTRIES), которых нет в основной выдаче:
-   лучшие по проверке из РФ (ru_probe.json), затем без данных проверки;
- - затем зарубежные серверы, которые ответили из РФ не менее чем у доли
-   MOBILE_MIN_PROBE узлов;
- - серверы из ТСПУ-сетей (в основном Cloudflare) в добавку не берутся
-   (MOBILE_EXCLUDE_TSPU = True): они отвечают российской точке, но на LTE
-   обычно красные; число пропущенных пишется в лог;
- - названия не меняются, отдельной подписки нет;
- - без повторов между подписками и с уже вошедшими серверами;
- - список добавленных серверов пишется в output/subscription_mobile_list.txt
-   (только для просмотра, без ссылок);
- - MOBILE_QUOTA = 0 выключает добавку.
-
-Дополнительные сигналы (scripts/net_signals.py, выключаются SIGNALS_ENABLED = False):
- - списки IP, заблокированных РКН (antifilter): такие серверы в подписки не попадают совсем
-   (если сервер не замерен зелёным на мобильной сети и списки не выглядят слишком широкими,
-   см. RKN_EXCLUDE и RKN_EXCLUDE_MAX_SHARE в net_signals.py);
- - сети хостеров с ограничением ТСПУ "16 КБ" (data/tspu_asn.json): мягкий штраф;
- - приоритет стран из данных (ответ с российских узлов, доля в списках РКН и в
-   ТСПУ-сетях): бонус или штраф до 30 мс, отчёт в output/country_priority.json;
- - замеры на LTE: бонус и штраф с учётом свежести, закрепление зелёных, оценка серверов без
-   замера по протоколу, подсети /24 и сети (подробности в net_signals.py);
- - любая ошибка сигналов не ломает сборку, сортировка тогда работает как раньше.
-
-Защита от просадки (SHRINK_GUARD): если новая подписка меньше доли SHRINK_GUARD
-от прошлой версии файла, она НЕ перезаписывается (сборка с плохой проверкой
-не должна портить подписки). SHRINK_GUARD = 0 выключает защиту.
-
-ASN-карта: после записи подписок в лог выводится сворачиваемый блок
-"название | протокол | адрес | сеть" (по output/asn_info.json от geo_flag.py).
-
-Если для подписки серверов нет, её файл не перезаписывается.
-Результат кодируется в base64 (формат Karing/Hiddyfi/v2rayNG).
-"""
-import base64
-import ipaddress
-import json
-import os
-import re
-import sys
-import time
-import urllib.parse
-from datetime import datetime, timedelta, timezone
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-try:
-    from ai_weights import score as ai_score
-except Exception:
-    def ai_score(uri):
-        return 0
-
-try:
-    import net_signals
-except Exception as _signals_err:   # файла нет или в нём ошибка: работаем без сигналов
-    net_signals = None
-    _SIGNALS_IMPORT_ERROR = str(_signals_err)
-else:
-    _SIGNALS_IMPORT_ERROR = ""
-
-IN_FILE = os.path.join(os.path.dirname(__file__), "..", "masked_configs.json")
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
-OUT_SUB = os.path.join(OUT_DIR, "subscription.txt")
-OUT_READABLE = os.path.join(OUT_DIR, "subscription_readable.txt")
-OUT_SUB_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular.txt")
-OUT_READABLE_CELLULAR = os.path.join(OUT_DIR, "subscription_cellular_readable.txt")
-OUT_MOBILE_LIST = os.path.join(OUT_DIR, "subscription_mobile_list.txt")
-OUT_COUNTRY_PRIORITY = os.path.join(OUT_DIR, "country_priority.json")
-REPORTS_FILE = os.path.join(OUT_DIR, "server_reports.json")
-OONI_INDEX_FILE = os.path.join(OUT_DIR, "ooni_censorship_index.json")
-PROBE_FILE = os.path.join(OUT_DIR, "ru_probe.json")
-ASN_FILE = os.path.join(OUT_DIR, "asn_info.json")
-
-SUBSCRIPTION_COUNT = 2                # на сколько подписок делить пул (2 и больше)
-
-OONI_PRESSURE_THRESHOLD = 50          # % — выше этого порога давление считается высоким
-OONI_HIGH_PRESSURE_MULTIPLIER = 1.5   # во столько раз усиливаем бонусы при высоком давлении
-
-MAX_SERVERS = 200                     # максимум серверов в ОДНОЙ подписке
-REALITY_BONUS_MS = 50
-TRANSPORT_BONUS_MS = 20               # для type=xhttp/grpc/ws
-CELLULAR_BONUS_MS = 80                # бонус протоколам из CELLULAR_PROTOCOLS
-CELLULAR_PROTOCOLS = set()            # пусто: на LTE дело в серверах, а не в протоколе
-STABLE_TRANSPORTS = {"xhttp", "grpc", "ws"}
-MAX_PER_COUNTRY = 12                  # максимум серверов одной страны в ОДНОЙ подписке
-EXCLUDED_COUNTRIES = {"RU"}           # серверы внутри России не берём в основной пул
-
-ALLOW_VLESS = True                    # False = vless не берётся совсем
-ALLOW_PLAIN_VLESS = False             # vless без Reality и без TLS не берётся
-
-PINNED_IGNORE_FILTERS = True          # закреплённые (зелёные на LTE) не режутся фильтрами страны и vless
-PIN_IN_ALL_SUBSCRIPTIONS = True       # закреплённые есть в КАЖДОЙ подписке (False = делятся по кругу)
-
-STRIP_SERVER_NUMBERS = True           # убирать порядковые номера «-1», «-2» в конце названия
-
-REPORT_BONUS_MS = 150                 # подтверждённый человеком сервер важнее
-REPORT_TTL_HOURS = 48                 # сколько часов подтверждение актуально
-
-AI_POINT_MS = 5                       # 1 балл совета ИИ = 5 мс бонуса
-AI_MAX_BONUS_MS = 150                 # потолок влияния ИИ
-
-MASK_POINT_MS = 10                    # 1 балл маскировки = 10 мс бонуса
-MASK_MAX_BONUS_MS = 40                # потолок влияния оценки маскировки
-
-PROBE_PENALTY_MS = 100                # максимальный штраф за недоступность из РФ (0 = выключено)
-PROBE_TTL_HOURS = 48                  # старше этого результат проверки не учитывается
-
-SIGNALS_ENABLED = True                # списки РКН, сети ТСПУ, приоритет стран (scripts/net_signals.py)
-MOBILE_EXCLUDE_RKN = True             # в мобильную добавку не берём серверы из списков РКН
-MOBILE_EXCLUDE_TSPU = True            # в мобильную добавку не берём серверы из ТСПУ-сетей (False = как раньше)
-
-MOBILE_QUOTA = 40                     # серверов мобильной добавки в КАЖДУЮ подписку (0 = выключено)
-MOBILE_COUNTRIES = {"RU"}             # страны, которые берём ТОЛЬКО для мобильной добавки
-MOBILE_MIN_PROBE = 0.5                # доля российских узлов, ответивших серверу (для проверенных)
-
-SHRINK_GUARD = 0.6                    # новая подписка меньше этой доли прошлой: файл не перезаписывается (0 = выключено)
-SHRINK_GUARD_MIN_OLD = 20             # защита работает, если в прошлой версии было не меньше стольких серверов
-
-HY2_SCHEMES = {"hysteria2", "hy2"}
-
-TYPE_RE = re.compile(r"[?&]type=([a-zA-Z0-9_-]+)", re.IGNORECASE)
-SECURITY_RE = re.compile(r"[?&]security=([a-zA-Z0-9_-]+)", re.IGNORECASE)
-NUMBER_SUFFIX_RE = re.compile(r"\s*-\s*\d+\s*$")
-
-
-def clean_name(name):
-    """Убирает порядковый номер в конце названия: «США Лос-Анджелес-3» -> «США Лос-Анджелес»."""
-    if not STRIP_SERVER_NUMBERS:
-        return name
-    cleaned = NUMBER_SUFFIX_RE.sub("", name or "").strip()
-    return cleaned or name
-
-
-def server_name(c):
-    """Название сервера для подписки (без номера)."""
-    return clean_name(c.get("display_name") or c.get("remark") or "VPN")
-
-
-def load_reports():
-    if not os.path.exists(REPORTS_FILE):
-        return {}
-    try:
-        with open(REPORTS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def load_probe():
-    """Читает output/ru_probe.json (результаты проверки с российских узлов)."""
-    if (PROBE_PENALTY_MS <= 0 and MOBILE_QUOTA <= 0) or not os.path.exists(PROBE_FILE):
-        return {}
-    try:
-        with open(PROBE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def load_asn():
-    """Читает output/asn_info.json (хост -> сеть), его пишет geo_flag.py."""
-    if not os.path.exists(ASN_FILE):
-        return {}
-    try:
-        with open(ASN_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def count_servers(path):
-    """Сколько серверов (строк со ссылкой) в текстовом файле подписки."""
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return sum(1 for line in f if "://" in line)
-    except OSError:
-        return 0
-
-
-def is_confirmed(display_name, reports, now):
-    """True, если есть подтверждение "работает" не старше REPORT_TTL_HOURS
-    и оно не было позже отменено."""
-    entry = reports.get(display_name)
-    if not entry or not entry.get("last_ok"):
-        return False
-    try:
-        last_ok = datetime.fromisoformat(entry["last_ok"])
-    except (ValueError, TypeError):
-        return False
-    if (now - last_ok) > timedelta(hours=REPORT_TTL_HOURS):
-        return False
-    last_fail_raw = entry.get("last_fail")
-    if last_fail_raw:
-        try:
-            last_fail = datetime.fromisoformat(last_fail_raw)
-            if last_fail > last_ok:
-                return False
-        except (ValueError, TypeError):
-            pass
-    return True
-
-
-def report_confirmed(c, reports, now):
-    """Подтверждение ищется по названию без номера и по старому названию с номером."""
-    raw_name = c.get("display_name") or c.get("remark") or "VPN"
-    return is_confirmed(clean_name(raw_name), reports, now) or is_confirmed(raw_name, reports, now)
-
-
-def load_ooni_pressure():
-    """Читает output/ooni_censorship_index.json. Процент давления или None."""
-    if not os.path.exists(OONI_INDEX_FILE):
-        return None
-    try:
-        with open(OONI_INDEX_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("pressure_percent")
-    except (json.JSONDecodeError, OSError):
-        return None
-
-
-def print_ooni_operators():
-    """Выводит в лог давление блокировок по операторам РФ (поле operators из OONI)."""
-    if not os.path.exists(OONI_INDEX_FILE):
-        return
-    try:
-        with open(OONI_INDEX_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return
-    ops = data.get("operators") or []
-    types = data.get("blocking_types") or {}
-    if not ops and not types:
-        return
-    print("::group::OONI по операторам РФ (давление блокировок)")
-    for o in ops:
-        print("%s %s: %s%% (измерений %s)" % (
-            o.get("asn", "?"), o.get("name", ""), o.get("pressure", "?"), o.get("measurements", "?")))
-    if types:
-        print("Способы блокировок (как вернул OONI): " +
-              ", ".join("%s %s" % (k, v) for k, v in types.items()))
-    print("::endgroup::")
-
-
-def rename_uri(raw: str, display_name: str) -> str:
-    base = raw.split("#", 1)[0]
-    return f"{base}#{urllib.parse.quote(display_name)}"
-
-
-def extract_transport(raw: str) -> str:
-    m = TYPE_RE.search(raw)
-    return m.group(1).lower() if m else ""
-
-
-def is_plain_vless(c) -> bool:
-    """vless без Reality и без TLS (security=none или параметра нет)."""
-    if c.get("proto") != "vless":
-        return False
-    if c.get("security_tag") == "reality":
-        return False
-    m = SECURITY_RE.search(c.get("raw", ""))
-    security = m.group(1).lower() if m else ""
-    return security not in ("reality", "tls")
-
-
-def vless_allowed(c) -> bool:
-    if c.get("proto") != "vless":
-        return True
-    if not ALLOW_VLESS:
-        return False
-    if not ALLOW_PLAIN_VLESS and is_plain_vless(c):
-        return False
-    return True
-
-
-def has_valid_address(c) -> bool:
-    """False для записей без адреса или порта в ссылке (мусор в источниках)."""
-    try:
-        u = urllib.parse.urlparse(c.get("raw", ""))
-        return bool(u.hostname) and u.port is not None
-    except ValueError:
-        return False
-
-
-def is_pinned(c, pinned) -> bool:
-    """True, если сервер закреплён (зелёный на LTE). Любая ошибка = не закреплён."""
-    if pinned is None:
-        return False
-    try:
-        return bool(pinned(c))
-    except Exception:
-        return False
-
-
-def _is_ip(host: str) -> bool:
-    try:
-        ipaddress.ip_address(host.strip().strip("[]"))
-        return True
-    except ValueError:
-        return False
-
-
-def mask_info(c) -> dict:
-    """Оценка маскировки по параметрам ссылки."""
-    info = {"score": 0, "vision": False, "insecure": False, "ip_sni": False, "obfs": False}
-    raw = c.get("raw", "")
-    try:
-        u = urllib.parse.urlparse(raw)
-        q = {k.lower(): v for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)}
-        port = u.port
-        scheme = (u.scheme or "").lower()
-    except Exception:
-        return info
-
-    proto = (c.get("proto") or scheme or "").lower()
-    security = q.get("security", "").lower()
-    is_reality = c.get("security_tag") == "reality" or security == "reality"
-    is_hy2 = proto in HY2_SCHEMES or scheme in HY2_SCHEMES
-    uses_tls = is_reality or security == "tls" or is_hy2 or proto == "trojan"
-    sni = (q.get("sni") or q.get("peer") or q.get("servername") or "").strip()
-
-    if uses_tls:
-        if not sni:
-            info["score"] -= 1
-        elif _is_ip(sni):
-            info["ip_sni"] = True
-            info["score"] -= 1
-        else:
-            info["score"] += 1
-
-    if is_reality and "vision" in q.get("flow", "").lower():
-        info["vision"] = True
-        info["score"] += 1
-
-    if q.get("insecure", "").lower() in ("1", "true") or q.get("allowinsecure", "").lower() in ("1", "true"):
-        info["insecure"] = True
-        info["score"] -= 2
-
-    if is_hy2 and q.get("obfs"):
-        info["obfs"] = True
-        info["score"] += 1
-
-    if port == 443:
-        info["score"] += 1
-
-    return info
-
-
-def probe_key(raw: str):
-    """host:port для vless/trojan (так записаны результаты в ru_probe.json)."""
-    try:
-        u = urllib.parse.urlparse(raw)
-        if (u.scheme or "").lower() not in ("vless", "trojan"):
-            return None
-        if not u.hostname or not u.port:
-            return None
-        return "%s:%d" % (u.hostname.lower(), u.port)
-    except Exception:
-        return None
-
-
-def probe_ratio(c, probe, now_ts):
-    """Доля российских узлов, у которых сервер ответил (0..1).
-    None: нет данных, данные старые или это Hy2."""
-    if not probe:
-        return None
-    key = probe_key(c.get("raw", ""))
-    entry = probe.get(key) if key else None
-    if not entry:
-        return None
-    try:
-        if now_ts - float(entry.get("t", 0)) > PROBE_TTL_HOURS * 3600:
-            return None
-        total = int(entry.get("total", 0))
-        ok = int(entry.get("ok", 0))
-    except (TypeError, ValueError):
-        return None
-    if total <= 0:
-        return None
-    return ok / float(total)
-
-
-def probe_penalty_ms(c, probe, now_ts) -> float:
-    """Штраф за недоступность из РФ: доля не ответивших узлов * PROBE_PENALTY_MS."""
-    if PROBE_PENALTY_MS <= 0:
-        return 0
-    ratio = probe_ratio(c, probe, now_ts)
-    if ratio is None:
-        return 0
-    return PROBE_PENALTY_MS * (1.0 - ratio)
-
-
-def make_sort_key(reports, now, probe, sig=None):
-    pressure = load_ooni_pressure()
-    high_pressure = pressure is not None and pressure >= OONI_PRESSURE_THRESHOLD
-    multiplier = OONI_HIGH_PRESSURE_MULTIPLIER if high_pressure else 1
-    reality_bonus = REALITY_BONUS_MS * multiplier
-    cellular_bonus = CELLULAR_BONUS_MS * multiplier
-    now_ts = time.time()
-    if pressure is not None:
-        print(f"Индикатор давления блокировок OONI (РФ): {pressure}% "
-              f"({'высокое, бонусы усилены' if high_pressure else 'в норме'})")
-    if probe:
-        print(f"Проверка из РФ: записей {len(probe)}, штраф до {PROBE_PENALTY_MS} мс")
-
-    def sort_key(c):
-        ping = c.get("ping_ms", 9999)
-        bonus = reality_bonus if c.get("security_tag") == "reality" else 0
-        if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS:
-            bonus += TRANSPORT_BONUS_MS
-        if c.get("proto") in CELLULAR_PROTOCOLS:
-            bonus += cellular_bonus
-
-        mask_bonus = mask_info(c)["score"] * MASK_POINT_MS
-        bonus += max(-MASK_MAX_BONUS_MS, min(MASK_MAX_BONUS_MS, mask_bonus))
-
-        if report_confirmed(c, reports, now):
-            bonus += REPORT_BONUS_MS
-
-        ai_bonus = ai_score(rename_uri(c.get("raw", ""), server_name(c))) * AI_POINT_MS
-        bonus += max(-AI_MAX_BONUS_MS, min(AI_MAX_BONUS_MS, ai_bonus))
-
-        penalty = probe_penalty_ms(c, probe, now_ts)
-
-        extra = 0
-        if sig is not None:
-            try:
-                extra = sig.adjust_ms(c)      # штрафы РКН и ТСПУ, замеры LTE, минус бонус страны
-            except Exception:
-                extra = 0
-
-        return ping - bonus + penalty + extra
-    return sort_key
-
-
-def output_paths(index):
-    """0 -> subscription.txt, 1 -> subscription_cellular.txt (старое имя),
-    2 и дальше -> subscription_3.txt, subscription_4.txt, ..."""
-    if index == 0:
-        return OUT_SUB, OUT_READABLE
-    if index == 1:
-        return OUT_SUB_CELLULAR, OUT_READABLE_CELLULAR
-    n = index + 1
-    return (os.path.join(OUT_DIR, "subscription_%d.txt" % n),
-            os.path.join(OUT_DIR, "subscription_%d_readable.txt" % n))
-
-
-def label_for(index):
-    if index == 0:
-        return "основная"
-    if index == 1:
-        return "вторая"
-    return "подписка %d" % (index + 1)
-
-
-def split_pool(configs, sort_key, n, pinned=None):
-    """Делит пул на n подписок: лучшие серверы раздаются по кругу.
-    pinned(c) -> True ставит сервер в самое начало и снимает с него лимит MAX_PER_COUNTRY
-    (и, при PINNED_IGNORE_FILTERS, фильтры страны и vless). При PIN_IN_ALL_SUBSCRIPTIONS
-    закреплённые попадают в каждую подписку."""
-    seen = set()
-    pool = []
-
-    valid = [c for c in configs if has_valid_address(c)]
-    if len(valid) != len(configs):
-        print(f"Отсеяно записей без адреса или порта: {len(configs) - len(valid)}")
-
-    def exempt(c):
-        return PINNED_IGNORE_FILTERS and is_pinned(c, pinned)
-
-    candidates = [c for c in valid
-                  if c.get("country_code", "??") not in EXCLUDED_COUNTRIES or exempt(c)]
-    kept_excluded = sum(1 for c in candidates if c.get("country_code", "??") in EXCLUDED_COUNTRIES)
-    if kept_excluded:
-        print(f"Закреплённые серверы из {sorted(EXCLUDED_COUNTRIES)} оставлены в пуле: {kept_excluded}")
-    before = len(candidates)
-    candidates = [c for c in candidates if vless_allowed(c) or exempt(c)]
-    if before != len(candidates):
-        print(f"vless отфильтрован: {before - len(candidates)} серверов "
-              f"(ALLOW_VLESS={ALLOW_VLESS}, ALLOW_PLAIN_VLESS={ALLOW_PLAIN_VLESS})")
-
-    ordered = sorted(candidates, key=sort_key)
-    pin_set = set()
-    if pinned is not None:
-        pins = []
-        for c in ordered:
-            if is_pinned(c, pinned):
-                pins.append(c)
-        pin_set = {c["raw"] for c in pins}
-        ordered = pins + [c for c in ordered if c["raw"] not in pin_set]
-
-    for c in ordered:
-        if c["raw"] in seen:
-            continue
-        seen.add(c["raw"])
-        pool.append(c)
-
-    groups = [[] for _ in range(n)]
-    counts = [dict() for _ in range(n)]
-    leftovers = []
-    turn = 0
-    for c in pool:
-        cc = c.get("country_code", "??")
-        is_pin = c["raw"] in pin_set
-        placed = False
-        for step in range(n):
-            g = (turn + step) % n
-            if len(groups[g]) >= MAX_SERVERS:
-                continue
-            if not is_pin and counts[g].get(cc, 0) >= MAX_PER_COUNTRY:
-                continue
-            groups[g].append(c)
-            counts[g][cc] = counts[g].get(cc, 0) + 1
-            turn = (g + 1) % n
-            placed = True
-            break
-        if not placed:
-            leftovers.append(c)
-    if pin_set:
-        placed_pins = sum(1 for c in pool if c["raw"] in pin_set)
-        print(f"Закреплено вверху (зелёные на LTE): {placed_pins} серверов.")
-        if PIN_IN_ALL_SUBSCRIPTIONS and n > 1:
-            pins_sorted = [c for c in pool if c["raw"] in pin_set]
-            for g in range(n):
-                rest = [c for c in groups[g] if c["raw"] not in pin_set]
-                groups[g] = (pins_sorted + rest)[:MAX_SERVERS]
-            print(f"Закреплённые серверы есть в каждой подписке ({len(pins_sorted)} в каждой).")
-    return groups, leftovers
-
-
-def pad_to_ten(group, leftovers):
-    """Добивает подписку запасными до круглого десятка. Каждый запасной один раз."""
-    target = -(-len(group) // 10) * 10
-    while len(group) < target and leftovers:
-        group.append(leftovers.pop(0))
-    return group
-
-
-def is_tspu_server(sig, c):
-    """True/False: сервер в ТСПУ-сети; None, если определить не удалось.
-    Пробует методы net_signals.Signals по очереди, затем поля evaluate(c)."""
-    for name in ("is_tspu", "in_tspu", "is_tspu_net"):
-        fn = getattr(sig, name, None)
-        if callable(fn):
-            try:
-                return bool(fn(c))
-            except Exception:
-                return None
-    try:
-        e = sig.evaluate(c)
-    except Exception:
-        return None
-    if isinstance(e, dict):
-        for key in ("tspu", "is_tspu", "in_tspu"):
-            if key in e:
-                return bool(e[key])
-    return None
-
-
-def pick_mobile(configs, groups, sort_key, probe, sig=None):
-    """Выбирает кандидатов мобильной добавки из нашего же пула.
-    Порядок: серверы из MOBILE_COUNTRIES (лучшие по проверке из РФ, потом без
-    данных), затем зарубежные, ответившие из РФ не менее чем у MOBILE_MIN_PROBE.
-    Серверы, уже вошедшие в подписки, пропускаются; серверы из списков РКН тоже
-    (если MOBILE_EXCLUDE_RKN), и серверы из ТСПУ-сетей (если MOBILE_EXCLUDE_TSPU)."""
-    now_ts = time.time()
-    seen = {c["raw"].split("#", 1)[0] for g in groups for c in g}
-    cands = []
-    ru_total = ru_probed = foreign_ok = rkn_skipped = tspu_skipped = tspu_unknown = 0
-    for c in configs:
-        base = c.get("raw", "").split("#", 1)[0]
-        if not base or base in seen or not vless_allowed(c) or not has_valid_address(c):
-            continue
-        seen.add(base)
-        if sig is not None and MOBILE_EXCLUDE_RKN:
-            try:
-                if sig.is_rkn(c):
-                    rkn_skipped += 1
-                    continue
-            except Exception:
-                pass
-        if sig is not None and MOBILE_EXCLUDE_TSPU:
-            verdict = is_tspu_server(sig, c)
-            if verdict is None:
-                tspu_unknown += 1
-            elif verdict:
-                tspu_skipped += 1
-                continue
-        ratio = probe_ratio(c, probe, now_ts)
-        is_mob_country = c.get("country_code", "??") in MOBILE_COUNTRIES
-        if is_mob_country:
-            ru_total += 1
-            if ratio is not None:
-                ru_probed += 1
-                if ratio < MOBILE_MIN_PROBE:
-                    continue
-        else:
-            if ratio is None or ratio < MOBILE_MIN_PROBE:
-                continue
-            foreign_ok += 1
-        cands.append((0 if is_mob_country else 1,
-                      -(ratio if ratio is not None else 0.0),
-                      sort_key(c), c))
-    cands.sort(key=lambda t: t[:3])
-    print(f"Мобильная добавка: серверов из {sorted(MOBILE_COUNTRIES)} в пуле {ru_total} "
-          f"(с проверкой из РФ {ru_probed}), зарубежных с ответом из РФ {foreign_ok}, "
-          f"пропущено из-за списков РКН {rkn_skipped}, из-за ТСПУ-сетей {tspu_skipped}, "
-          f"кандидатов {len(cands)}.")
-    if MOBILE_EXCLUDE_TSPU and sig is not None and tspu_unknown:
-        print(f"ВНИМАНИЕ: у {tspu_unknown} серверов не удалось определить ТСПУ-сеть "
-              f"(в net_signals.py нет is_tspu и поля tspu в evaluate), они не отсеяны.")
-    out = []
-    for t in cands:
-        item = dict(t[3])
-        item["mobile"] = True
-        out.append(item)
-    return out
-
-
-def add_mobile(groups, mobile):
-    """Добавляет в каждую подписку до MOBILE_QUOTA серверов мобильной добавки
-    по кругу, без повторов между подписками и с уже вошедшими серверами."""
-    if not mobile or not groups:
-        return 0
-    n = len(groups)
-    used = {c["raw"].split("#", 1)[0] for g in groups for c in g}
-    taken = [0] * n
-    added = 0
-    turn = 0
-    for c in mobile:
-        if all(t >= MOBILE_QUOTA for t in taken):
-            break
-        base = c["raw"].split("#", 1)[0]
-        if base in used:
-            continue
-        for step in range(n):
-            g = (turn + step) % n
-            if taken[g] < MOBILE_QUOTA and len(groups[g]) < MAX_SERVERS:
-                groups[g].append(c)
-                used.add(base)
-                taken[g] += 1
-                added += 1
-                turn = (g + 1) % n
-                break
-    return added
-
-
-def write_mobile_list(groups, probe):
-    """Пишет output/subscription_mobile_list.txt: список серверов мобильной
-    добавки для просмотра. Это не подписка, ссылок в файле нет."""
-    now_ts = time.time()
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    lines = ["# Мобильная добавка, обновлено %s" % stamp,
-             "# Это НЕ подписка, ссылок здесь нет. Только для просмотра.",
-             "# Формат: название | протокол | страна | ответ российских узлов (ru_probe)"]
-    total = 0
-    for i, g in enumerate(groups):
-        items = [c for c in g if c.get("mobile")]
-        total += len(items)
-        lines.append("")
-        lines.append("== %s: %d ==" % (label_for(i), len(items)))
-        for c in items:
-            ratio = probe_ratio(c, probe, now_ts)
-            answer = "нет данных" if ratio is None else "%d%%" % round(ratio * 100)
-            lines.append("%s | %s | %s | %s" % (
-                server_name(c), c.get("proto", "?"), c.get("country_code", "??"), answer))
-    lines.insert(3, "# Всего серверов: %d" % total)
-    try:
-        with open(OUT_MOBILE_LIST, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
-        print(f"Список мобильной добавки записан: {OUT_MOBILE_LIST} ({total} серверов)")
-    except OSError as e:
-        print(f"Список мобильной добавки не записан: {e}")
-
-
-def print_asn_map(written, asn):
-    """Выводит в лог сворачиваемый блок: название | протокол | адрес | сеть.
-    written: список (индекс подписки, список серверов) только для записанных подписок."""
-    if not written:
-        return
-    if not asn:
-        print("ASN-карта: файла output/asn_info.json нет (geo_flag.py ещё не обновлён?)")
-        return
-    print("::group::ASN-карта подписок (название | протокол | адрес | сеть)")
-    for i, group in written:
-        print("== %s ==" % label_for(i))
-        for c in group:
-            try:
-                u = urllib.parse.urlparse(c.get("raw", ""))
-                host = (u.hostname or "").lower()
-                port = u.port
-            except ValueError:
-                host, port = "", None
-            info = asn.get(host) or {}
-            mark = " [моб]" if c.get("mobile") else ""
-            dc = " DC" if info.get("hosting") else ""
-            print("%s%s | %s | %s:%s | %s %s%s" % (
-                server_name(c), mark, c.get("proto", "?"), host, port,
-                info.get("asn", "?"), info.get("name", ""), dc))
-    print("::endgroup::")
-
-
-def render_subscription(configs, reports, now, probe, out_sub, out_readable, label):
-    """Записывает подписку. Возвращает True, если файлы записаны."""
-    if not configs:
-        print(f"[{label}] серверов нет, файл не перезаписан, остаётся прошлая версия")
-        return False
-
-    if SHRINK_GUARD > 0:
-        old_n = count_servers(out_readable)
-        if old_n >= SHRINK_GUARD_MIN_OLD and len(configs) < SHRINK_GUARD * old_n:
-            print(f"[{label}] ЗАЩИТА: новых серверов {len(configs)} против {old_n} в прошлой версии "
-                  f"(меньше {int(SHRINK_GUARD * 100)}%), файл НЕ перезаписан, остаётся прошлая версия")
-            return False
-
-    final_lines = []
-    for c in configs:
-        display_name = server_name(c)
-        if report_confirmed(c, reports, now):
-            display_name = f"{display_name} \u2705"
-        final_lines.append(rename_uri(c["raw"], display_name))
-
-    body = "\n".join(final_lines)
-
-    with open(out_readable, "w", encoding="utf-8") as f:
-        f.write(body + "\n")
-
-    encoded = base64.b64encode(body.encode("utf-8")).decode("utf-8")
-    with open(out_sub, "w", encoding="utf-8") as f:
-        f.write(encoded)
-
-    reality_count = sum(1 for c in configs if c.get("security_tag") == "reality")
-    hy2_count = sum(1 for c in configs if c.get("proto") == "hysteria2")
-    stable_transport_count = sum(
-        1 for c in configs if extract_transport(c.get("raw", "")) in STABLE_TRANSPORTS
-    )
-    confirmed_count = sum(1 for c in configs if report_confirmed(c, reports, now))
-    mobile_count = sum(1 for c in configs if c.get("mobile"))
-    mobile_ru = sum(1 for c in configs if c.get("mobile") and c.get("country_code") in MOBILE_COUNTRIES)
-    countries_count = len({c.get("country_code", "??") for c in configs if not c.get("mobile")})
-    masks = [mask_info(c) for c in configs]
-    print(f"[{label}] вошло {len(final_lines)} серверов (лимит {MAX_SERVERS}), "
-          f"из них Reality: {reality_count}, Hysteria2: {hy2_count}, "
-          f"стабильные транспорты (xhttp/grpc/ws): {stable_transport_count}, "
-          f"подтверждено пользователями: {confirmed_count}, "
-          f"стран: {countries_count} (лимит {MAX_PER_COUNTRY} на страну).")
-    print(f"[{label}] мобильная добавка: {mobile_count} (из России: {mobile_ru}).")
-    print(f"[{label}] маскировка: vision {sum(m['vision'] for m in masks)}, "
-          f"insecure {sum(m['insecure'] for m in masks)}, "
-          f"sni-IP {sum(m['ip_sni'] for m in masks)}, "
-          f"obfs {sum(m['obfs'] for m in masks)}.")
-    print(f"[{label}] файл: {out_sub}")
-    return True
-
-
-def build_signals(configs, probe):
-    """Готовит дополнительные сигналы. При любой ошибке возвращает None."""
-    if not SIGNALS_ENABLED:
-        print("Дополнительные сигналы выключены (SIGNALS_ENABLED = False).")
-        return None
-    if net_signals is None:
-        print("Дополнительные сигналы выключены: scripts/net_signals.py не загрузился (%s)."
-              % (_SIGNALS_IMPORT_ERROR or "файла нет"))
-        return None
-    try:
-        net_signals.refresh_rkn()
-        sig = net_signals.Signals(load_asn())
-        now_ts = time.time()
-        sig.prepare(configs, lambda c: probe_ratio(c, probe, now_ts))
-        sig.print_summary()
-        sig.write_country_report(OUT_COUNTRY_PRIORITY)
-        return sig
-    except Exception as e:
-        print("Дополнительные сигналы выключены из-за ошибки: %s" % e)
-        return None
-
-
-def drop_rkn_blocked(configs, sig):
-    """Убирает из пула серверы, чьи IP в списках РКН: они из России не подключаются.
-    Если списки слишком широкие (см. RKN_EXCLUDE_MAX_SHARE в net_signals.py) или сигналов нет,
-    пул не меняется."""
-    if sig is None:
-        return configs
-    try:
-        keep, dropped = sig.drop_blocked(configs)
-    except Exception as e:
-        print("Исключение серверов из списков РКН пропущено из-за ошибки: %s" % e)
-        return configs
-    if not dropped:
-        print("Исключено серверов из списков РКН: 0.")
-        return configs
-    print("Исключено серверов из списков РКН: %d (в пуле осталось %d)." % (len(dropped), len(keep)))
-    print("::group::Исключённые серверы (название | адрес | сеть)")
-    for c in dropped:
-        try:
-            e = sig.evaluate(c)
-            print("%s | %s:%s | %s" % (server_name(c),
-                                       e.get("ip") or c.get("host"), c.get("port"),
-                                       ("AS%s" % e["asn"]) if e.get("asn") else "?"))
-        except Exception:
-            pass
-    print("::endgroup::")
-    return keep
-
-
-def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
-    with open(IN_FILE, "r", encoding="utf-8") as f:
-        configs = json.load(f)
-
-    reports = load_reports()
-    probe = load_probe()
-    now = datetime.now(timezone.utc)
-    print_ooni_operators()
-    sig = build_signals(configs, probe)
-    configs = drop_rkn_blocked(configs, sig)
-    sort_key = make_sort_key(reports, now, probe, sig)
-
-    count = max(1, SUBSCRIPTION_COUNT)
-    pinned_fn = sig.is_lte_pinned if sig is not None else None
-    groups, leftovers = split_pool(configs, sort_key, count, pinned_fn)
-    print(f"Пул после фильтров: {sum(len(g) for g in groups) + len(leftovers)} серверов, "
-          f"делим на {count} подписок.")
-
-    groups = [pad_to_ten(g, leftovers) for g in groups]
-
-    if MOBILE_QUOTA > 0:
-        mobile = pick_mobile(configs, groups, sort_key, probe, sig)
-        added = add_mobile(groups, mobile)
-        print(f"Мобильная добавка: добавлено в подписки {added} (квота {MOBILE_QUOTA} на подписку).")
-        write_mobile_list(groups, probe)
-
-    written = []
-    for i, group in enumerate(groups):
-        out_sub, out_readable = output_paths(i)
-        if sig is not None:
-            try:
-                rkn_n, tspu_n = sig.group_stats(group)
-                print(f"[{label_for(i)}] из {len(group)} серверов в списках РКН: {rkn_n}, в ТСПУ-сетях: {tspu_n}.")
-            except Exception:
-                pass
-        if render_subscription(group, reports, now, probe, out_sub, out_readable, label_for(i)):
-            written.append((i, group))
-
-    print_asn_map(written, load_asn())
-
-    try:
-        import build_singbox
-        build_singbox.main()
-    except Exception as e:
-        print("sing-box подписка пропущена: %s" % e)
-
-
-if __name__ == "__main__":
-    main()
+name: Build Final Subscription
+
+on:
+  schedule:
+    - cron: "20 * * * *"
+  workflow_dispatch: {}
+  workflow_call: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: koteito-vpn-write
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache date
+        id: cdate
+        run: echo "d=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore signal lists cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/signals
+          key: signals-${{ steps.cdate.outputs.d }}
+          restore-keys: |
+            signals-
+
+      - name: Install sing-box
+        run: |
+          TAG=$(git ls-remote --tags --refs https://github.com/SagerNet/sing-box 'refs/tags/v1.12.*' | sed 's#.*refs/tags/##' | grep -E '^v1\.12\.[0-9]+$' | sort -V | tail -1)
+          echo "sing-box $TAG"
+          mkdir -p /tmp/sb
+          curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box-${TAG#v}-linux-amd64.tar.gz" | tar -xz -C /tmp/sb --strip-components=1
+          sudo install -m 755 /tmp/sb/sing-box /usr/local/bin/sing-box
+          sing-box version
+
+      - name: Rebuild pipeline from raw_servers.txt and run geo/mask stage
+        env:
+          # raw_servers.txt уже прошёл реальный тест в collect_and_test, повторный
+          # тест здесь вдвое сокращал пул. Удалите эти две строки, чтобы вернуть тест.
+          REAL_TEST: "0"
+        run: |
+          python scripts/raw_to_json.py
+          python scripts/filter_clean.py
+          python scripts/ping_test.py
+          python scripts/dns_test.py
+          python scripts/geo_flag.py
+          python scripts/xray_mask.py
+          python scripts/ooni_censorship_index.py
+          python scripts/build_subscription.py
+          python scripts/update_info.py || echo "update_info: ошибка, README не обновлён"
+          python scripts/build_ad_block_rules.py
+          python scripts/build_status_page.py
+
+      - name: Commit updated subscription
+        run: |
+          git config user.name "koteito-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add output/subscription*.txt output/ad_block_rules.txt docs/
+          git add output/subscription_frag*.json 2>/dev/null || true
+          git add output/ooni_censorship_index.json 2>/dev/null || true
+          git add output/country_priority.json 2>/dev/null || true
+          git add output/censorship_info.json data/rkn_seen.json README.md 2>/dev/null || true
+          git add data/rkn_blocked_cidr.txt output/network_signals.json 2>/dev/null || true
+          git diff --cached --quiet && echo "Нет изменений" || git commit -m "auto: обновление subscription.txt"
+          git fetch origin main
+          git merge -X ours --no-edit origin/main
+          git push
+
+      - name: Send status to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 scripts/announce_status.py
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "TELEGRAM_BOT_TOKEN не задан — пропускаем уведомление."
+            exit 0
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="❌ KoteitoVPN: build_subscription упал. Смотри лог: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
