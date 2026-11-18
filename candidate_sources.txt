@@ -46,8 +46,6 @@
 
 # --- barry-far — Splitted-By-Protocol ---
 
-# --- igareck ---
-
 # --- AvenCores — goida (1–26) ---
 
 # --- w1770946466 — доп. subscription файлы ---
