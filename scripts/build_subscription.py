@@ -23,7 +23,10 @@ build_subscription.py
    серверы без повторов; False возвращает старое поведение, когда закреплённые делятся
    по кругу между подписками;
  - лучшие раздаются по кругу;
- - в подписке не больше MAX_SERVERS серверов и MAX_PER_COUNTRY на страну;
+ - в подписке не больше MAX_SERVERS серверов (из них MOBILE_RESERVE мест под мобильную добавку)
+   и MAX_PER_COUNTRY на страну;
+ - незакреплённых серверов из ТСПУ-сетей (в основном Cloudflare) в подписке не больше
+   MAX_TSPU_PER_SUB: по замерам LTE они зелёные реже остальных, но не всегда красные;
  - серверы из EXCLUDED_COUNTRIES (Россия) в основной пул не берутся;
  - vless без Reality и TLS не берётся;
  - записи без адреса или порта (мусор в источниках) в подписки не берутся;
@@ -111,7 +114,9 @@ SUBSCRIPTION_COUNT = 2                # на сколько подписок д�
 OONI_PRESSURE_THRESHOLD = 50          # % — выше этого порога давление считается высоким
 OONI_HIGH_PRESSURE_MULTIPLIER = 1.5   # во столько раз усиливаем бонусы при высоком давлении
 
-MAX_SERVERS = 200                     # максимум серверов в ОДНОЙ подписке
+MAX_SERVERS = 100                     # максимум серверов в ОДНОЙ подписке (вместе с мобильной добавкой)
+MOBILE_RESERVE = 10                   # сколько мест из MAX_SERVERS оставлено под мобильную добавку
+MAX_TSPU_PER_SUB = 10                 # не больше стольких незакреплённых серверов из ТСПУ-сетей (Cloudflare и др.) в ОДНОЙ подписке (0 = без лимита)
 REALITY_BONUS_MS = 50
 TRANSPORT_BONUS_MS = 20               # для type=xhttp/grpc/ws
 CELLULAR_BONUS_MS = 80                # бонус протоколам из CELLULAR_PROTOCOLS
@@ -148,7 +153,8 @@ MOBILE_QUOTA = 40                     # серверов мобильной до
 MOBILE_COUNTRIES = {"RU"}             # страны, которые берём ТОЛЬКО для мобильной добавки
 MOBILE_MIN_PROBE = 0.5                # доля российских узлов, ответивших серверу (для проверенных)
 
-SHRINK_GUARD = 0.6                    # новая подписка меньше этой доли прошлой: файл не перезаписывается (0 = выключено)
+SHRINK_GUARD = 0.4                    # новая подписка меньше этой доли прошлой: файл не перезаписывается (0 = выключено)
+                                      # 0.4, а не 0.6, пока подписки ужимаются с 200 до 100; после первой удачной сборки можно вернуть 0.6
 SHRINK_GUARD_MIN_OLD = 20             # защита работает, если в прошлой версии было не меньше стольких серверов
 
 HY2_SCHEMES = {"hysteria2", "hy2"}
@@ -489,13 +495,26 @@ def label_for(index):
     return "подписка %d" % (index + 1)
 
 
-def split_pool(configs, sort_key, n, pinned=None):
+def split_pool(configs, sort_key, n, pinned=None, tspu_fn=None):
     """Делит пул на n подписок: лучшие серверы раздаются по кругу.
     pinned(c) -> True ставит сервер в самое начало и снимает с него лимит MAX_PER_COUNTRY
     (и, при PINNED_IGNORE_FILTERS, фильтры страны и vless). При PIN_IN_ALL_SUBSCRIPTIONS
     закреплённые попадают в каждую подписку."""
     seen = set()
     pool = []
+    main_limit = MAX_SERVERS - (MOBILE_RESERVE if MOBILE_QUOTA > 0 else 0)
+    tspu_cache = {}
+
+    def in_tspu(c):
+        if tspu_fn is None:
+            return False
+        key = c["raw"]
+        if key not in tspu_cache:
+            try:
+                tspu_cache[key] = bool(tspu_fn(c))
+            except Exception:
+                tspu_cache[key] = False
+        return tspu_cache[key]
 
     valid = [c for c in configs if has_valid_address(c)]
     if len(valid) != len(configs):
@@ -533,25 +552,40 @@ def split_pool(configs, sort_key, n, pinned=None):
 
     groups = [[] for _ in range(n)]
     counts = [dict() for _ in range(n)]
+    tspu_counts = [0] * n
+    tspu_capped = 0
     leftovers = []
     turn = 0
     for c in pool:
         cc = c.get("country_code", "??")
         is_pin = c["raw"] in pin_set
+        is_tspu = (not is_pin) and MAX_TSPU_PER_SUB > 0 and in_tspu(c)
         placed = False
+        tspu_blocked = False
         for step in range(n):
             g = (turn + step) % n
-            if len(groups[g]) >= MAX_SERVERS:
+            if len(groups[g]) >= main_limit:
                 continue
             if not is_pin and counts[g].get(cc, 0) >= MAX_PER_COUNTRY:
                 continue
+            if is_tspu and tspu_counts[g] >= MAX_TSPU_PER_SUB:
+                tspu_blocked = True
+                continue
             groups[g].append(c)
             counts[g][cc] = counts[g].get(cc, 0) + 1
+            if is_tspu:
+                tspu_counts[g] += 1
             turn = (g + 1) % n
             placed = True
             break
         if not placed:
-            leftovers.append(c)
+            if tspu_blocked:
+                tspu_capped += 1       # сверх лимита ТСПУ: не берём и в запасные
+            else:
+                leftovers.append(c)
+    if MAX_TSPU_PER_SUB > 0 and tspu_fn is not None:
+        print(f"Лимит серверов из ТСПУ-сетей ({MAX_TSPU_PER_SUB} на подписку): "
+              f"взято {sum(tspu_counts)}, не вошло из-за лимита {tspu_capped}.")
     if pin_set:
         placed_pins = sum(1 for c in pool if c["raw"] in pin_set)
         print(f"Закреплено вверху (зелёные на LTE): {placed_pins} серверов.")
@@ -559,7 +593,7 @@ def split_pool(configs, sort_key, n, pinned=None):
             pins_sorted = [c for c in pool if c["raw"] in pin_set]
             for g in range(n):
                 rest = [c for c in groups[g] if c["raw"] not in pin_set]
-                groups[g] = (pins_sorted + rest)[:MAX_SERVERS]
+                groups[g] = (pins_sorted + rest)[:main_limit]
             print(f"Закреплённые серверы есть в каждой подписке ({len(pins_sorted)} в каждой).")
     return groups, leftovers
 
@@ -854,7 +888,8 @@ def main():
 
     count = max(1, SUBSCRIPTION_COUNT)
     pinned_fn = sig.is_lte_pinned if sig is not None else None
-    groups, leftovers = split_pool(configs, sort_key, count, pinned_fn)
+    tspu_fn = (lambda c: is_tspu_server(sig, c) is True) if sig is not None else None
+    groups, leftovers = split_pool(configs, sort_key, count, pinned_fn, tspu_fn)
     print(f"Пул после фильтров: {sum(len(g) for g in groups) + len(leftovers)} серверов, "
           f"делим на {count} подписок.")
 
