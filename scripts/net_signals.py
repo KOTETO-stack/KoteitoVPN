@@ -38,7 +38,15 @@ net_signals.py
       Общий потолок для таких серверов LTE_UNMEASURED_CAP_MS.
     Замеры сняты на одном операторе, поэтому слой по мере накопления данных можно усиливать.
     В лог выводится проверка слоёв по замерам.
-Итог для сервера: adjust_ms(c) = штрафы + замеры LTE - бонус страны (в мс, как пинг).
+ 5. Режим белых списков (версия 3). Когда на мобильной сети зарубежные серверы почти все красные,
+    а российские зелёные (так работают белые списки: пропускаются только российские адреса, а
+    российский сервер выводит в обычный интернет), российские серверы получают бонус до
+    RU_MODE_MAX_MS и перестают исключаться по спискам РКН и штрафоваться за них. Включается сам
+    по свежим замерам LTE (RU_MODE = "auto"); можно принудительно: "on" всегда, "off" никогда.
+    Бонус плавный: растёт с разницей долей зелёных (российские минус зарубежные), поэтому режим
+    не «мигает». Российский сервер с красным свежим замером бонуса не получает.
+Итог для сервера: adjust_ms(c) = штрафы + замеры LTE + бонус режима белых списков - бонус страны
+(в мс, как пинг).
 """
 import bisect
 import ipaddress
@@ -117,6 +125,15 @@ LTE_PROTO_GOOD_BONUS_MS = 40      # бонус серверам такого п�
 LTE_PROTO_MILD_MAX_MS = 30        # потолок мягкой поправки между порогами
 
 LTE_UNMEASURED_CAP_MS = 150       # потолок суммарной поправки серверу без своего замера
+
+# ---------- режим белых списков (российские серверы выше) ----------
+RU_MODE = "auto"                  # "auto": включается сам по замерам LTE, "on": всегда, "off": выключен
+RU_MODE_FRESH_DAYS = 5            # в расчёт идут замеры LTE не старше стольких дней
+RU_MODE_MIN_RU = 3                # столько замеренных российских серверов нужно, чтобы судить
+RU_MODE_MIN_FOREIGN = 8           # и столько зарубежных
+RU_MODE_MAX_MS = 200              # потолок бонуса российским серверам
+RU_MODE_SPAN = 0.6                # разница долей зелёных (РФ минус заграница), при которой бонус максимален
+RU_MODE_EXEMPT_DIFF = 0.2         # при такой разнице российские серверы не исключаются по спискам РКН
 
 
 def log(msg):
@@ -603,6 +620,9 @@ class Signals:
         self.rkn_penalty = RKN_PENALTY_MS
         self.exclude_active = True      # prepare() выключает, если списки РКН слишком широкие
         self.country = {}
+        self.ru_boost = 0.0             # бонус российским серверам в режиме белых списков, мс
+        self.ru_exempt_active = False   # российские серверы не исключаются по спискам РКН
+        self.ru_stats = {}              # данные режима белых списков для лога и отчёта
         self._memo = {}
         self._lte_memo = {}
         self._pinned = []
@@ -647,6 +667,63 @@ class Signals:
         self._lte_memo[key] = value
         return value
 
+    # --- режим белых списков ---
+    @staticmethod
+    def _is_ru(c):
+        return (c.get("country_code") or "").upper() == "RU"
+
+    def _compute_ru_mode(self):
+        """Решает, включён ли режим белых списков, по свежим замерам LTE: доля зелёных среди российских
+        серверов против доли среди зарубежных (замеры только серверов текущего пула, у них известна страна)."""
+        self.ru_boost, self.ru_exempt_active, self.ru_stats = 0.0, False, {}
+        if RU_MODE == "off":
+            self.ru_stats = {"mode": "off"}
+            return
+        ru, fo = [0, 0], [0, 0]       # [зелёных, всего]
+        if self.lte.ok:
+            for rec in self.lte.servers.values():
+                cc = rec.get("cc")
+                if not cc or cc == "??" or rec["flaky"] or rec["last"] not in ("G", "R"):
+                    continue
+                age = self.lte.age_days(rec)
+                if age is None or age > RU_MODE_FRESH_DAYS:
+                    continue
+                cell = ru if cc == "RU" else fo
+                cell[1] += 1
+                if rec["last"] == "G":
+                    cell[0] += 1
+        known = ru[1] >= RU_MODE_MIN_RU and fo[1] >= RU_MODE_MIN_FOREIGN
+        diff = None
+        if known:
+            diff = ru[0] / float(ru[1]) - fo[0] / float(fo[1])
+        if RU_MODE == "on":
+            self.ru_boost = float(RU_MODE_MAX_MS)
+            self.ru_exempt_active = True
+        elif diff is not None and diff > 0:
+            self.ru_boost = RU_MODE_MAX_MS * min(1.0, diff / RU_MODE_SPAN)
+            self.ru_exempt_active = diff >= RU_MODE_EXEMPT_DIFF
+        self.ru_stats = {"mode": RU_MODE, "known": known, "ru_green": ru[0], "ru_total": ru[1],
+                         "foreign_green": fo[0], "foreign_total": fo[1],
+                         "diff": round(diff, 3) if diff is not None else None,
+                         "boost_ms": round(self.ru_boost, 1), "exempt_rkn": self.ru_exempt_active}
+
+    def ru_ms(self, c):
+        """Бонус российскому серверу в режиме белых списков (минус: бонус). Красный свежий замер бонус отменяет."""
+        if self.ru_boost <= 0 or not self._is_ru(c):
+            return 0.0
+        if self.lte.ok:
+            try:
+                rec = self.lte.match(c, self.evaluate(c)["ip"])
+            except Exception:
+                rec = None
+            if rec is not None and not rec.get("flaky") and rec.get("last") == "R":
+                return 0.0
+        return -float(self.ru_boost)
+
+    def _ru_free(self, c):
+        """True: российский сервер в режиме белых списков, списки РКН к нему не применяются."""
+        return self.ru_exempt_active and self._is_ru(c)
+
     def is_lte_pinned(self, c):
         """True: сервер зелёный на LTE не позже LTE_PIN_DAYS дней назад (ставится вверх подписок)."""
         if not self.lte.ok:
@@ -682,6 +759,8 @@ class Signals:
         """True, если сервер надо убрать из подписок: его IP в списках РКН."""
         if not RKN_EXCLUDE or not self.exclude_active:
             return False
+        if self._ru_free(c):
+            return False
         e = self.evaluate(c)
         return bool(e["rkn"]) and not self._lte_green(c, e)
 
@@ -694,7 +773,7 @@ class Signals:
 
     def penalty_ms(self, c):
         e = self.evaluate(c)
-        rkn_pen = self.rkn_penalty if (e["rkn"] and not self._lte_green(c, e)) else 0.0
+        rkn_pen = self.rkn_penalty if (e["rkn"] and not self._ru_free(c) and not self._lte_green(c, e)) else 0.0
         pen = rkn_pen + e["tspu"]
         return min(pen, MAX_TOTAL_PENALTY_MS)
 
@@ -702,8 +781,9 @@ class Signals:
         return self.country.get(c.get("country_code") or "??", {}).get("bonus_ms", 0.0)
 
     def adjust_ms(self, c):
-        """Что добавить к баллу сервера: штрафы плюс поправка по замерам LTE минус бонус страны (мс)."""
-        return self.penalty_ms(c) + self.lte_ms(c) - self.country_bonus_ms(c)
+        """Что добавить к баллу сервера: штрафы плюс поправка по замерам LTE плюс бонус режима белых
+        списков минус бонус страны (мс)."""
+        return self.penalty_ms(c) + self.lte_ms(c) + self.ru_ms(c) - self.country_bonus_ms(c)
 
     # --- подготовка по всему пулу ---
     def prepare(self, configs, ratio_fn):
@@ -716,13 +796,14 @@ class Signals:
         self._lte_memo = {}
         for c in configs:
             e = self.evaluate(c)
+            cc = c.get("country_code") or "??"
             if self.lte.ok:
                 rec = self.lte.match(c, e["ip"])
                 if rec is not None:
                     lte_pool["flaky" if rec["flaky"] else rec["last"]] += 1
                     if c.get("proto"):
                         rec["proto"] = proto_from_text(c.get("proto"))
-            cc = c.get("country_code") or "??"
+                    rec["cc"] = cc
             s = stats.setdefault(cc, {"n": 0, "probe": [], "rkn": 0, "tspu": 0})
             s["n"] += 1
             if e["rkn"]:
@@ -739,6 +820,13 @@ class Signals:
                 r = None
             if r is not None:
                 s["probe"].append(r)
+
+        try:
+            self._compute_ru_mode()
+        except Exception as err:
+            self.ru_boost, self.ru_exempt_active = 0.0, False
+            self.ru_stats = {"mode": RU_MODE, "error": str(err)}
+            log("Режим белых списков не посчитан (%s)" % err)
 
         self._pinned = []
         self._night = []
@@ -832,6 +920,25 @@ class Signals:
         else:
             log("Приоритет стран: данных пока мало, бонусов нет.")
 
+    def print_ru_mode(self):
+        """Строка про режим белых списков."""
+        rs = self.ru_stats
+        if not rs or rs.get("mode") == "off":
+            return
+        if rs.get("error"):
+            return
+        if rs.get("known"):
+            log("Режим белых списков (%s): на LTE за %d дн. российских серверов зелёных %d из %d, "
+                "зарубежных %d из %d; бонус российским серверам %d мс, исключение по спискам РКН для "
+                "российских %s."
+                % (rs["mode"], RU_MODE_FRESH_DAYS, rs["ru_green"], rs["ru_total"], rs["foreign_green"],
+                   rs["foreign_total"], round(rs["boost_ms"]), "выключено" if rs["exempt_rkn"] else "действует"))
+        else:
+            log("Режим белых списков (%s): замеров мало (российских %d, нужно %d; зарубежных %d, нужно %d), "
+                "бонус российским серверам %d мс."
+                % (rs["mode"], rs["ru_total"], RU_MODE_MIN_RU, rs["foreign_total"], RU_MODE_MIN_FOREIGN,
+                   round(rs["boost_ms"])))
+
     def print_lte(self):
         """Сводка по замерам LTE и проверка слоёв РКН и ТСПУ на этих замерах."""
         if not self.lte.ok:
@@ -842,6 +949,7 @@ class Signals:
             "для серверов без замера эффект до %d мс)."
             % (len(self.lte.servers), len(self.lte.asn), pool["G"], pool["R"], pool["flaky"],
                LTE_SERVER_GREEN_BONUS_MS, LTE_SERVER_RED_PENALTY_MS, LTE_UNMEASURED_CAP_MS))
+        self.print_ru_mode()
         pinned = getattr(self, "_pinned", [])
         log("Замеры LTE: закреплено вверху подписок (зелёные на LTE не старше %d дн.): %d."
             % (LTE_PIN_DAYS, len(pinned)))
@@ -973,6 +1081,7 @@ class Signals:
                     "server_bonus_ms": LTE_SERVER_GREEN_BONUS_MS,
                     "server_penalty_ms": LTE_SERVER_RED_PENALTY_MS,
                     "network_max_ms": LTE_ASN_MAX_MS,
+                    "ru_mode": dict(self.ru_stats),
                 },
             }
             out = os.path.join(os.path.dirname(path), "network_signals.json")
