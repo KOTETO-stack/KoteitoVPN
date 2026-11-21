@@ -19,7 +19,27 @@
       "field": "port",
       "value": "443",
       "weight": 12
+    },
+    {
+      "field": "protocol",
+      "value": "vless",
+      "weight": 10
+    },
+    {
+      "field": "security",
+      "value": "tls",
+      "weight": 4
+    },
+    {
+      "field": "country",
+      "value": "🇺🇸",
+      "weight": -5
+    },
+    {
+      "field": "port",
+      "value": "8443",
+      "weight": -3
     }
   ],
-  "comment": "Понижаем приоритет hysteria2 из-за проблем на сотовой сети, повышаем приоритет серверов в России и с протоколом reality и портом 443"
+  "comment": "Понижаем приоритет hysteria2 и серверов в России, повышаем приоритет серверов с протоколом vless и безопасностью reality"
 }
