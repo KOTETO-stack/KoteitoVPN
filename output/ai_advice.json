@@ -2,13 +2,8 @@
   "rules": [
     {
       "field": "protocol",
-      "value": "hysteria2",
-      "weight": -10
-    },
-    {
-      "field": "country",
-      "value": "🇷🇺",
-      "weight": 5
+      "value": "vless",
+      "weight": 10
     },
     {
       "field": "security",
@@ -21,25 +16,30 @@
       "weight": 12
     },
     {
+      "field": "country",
+      "value": "🇺🇸",
+      "weight": 6
+    },
+    {
       "field": "protocol",
-      "value": "vless",
-      "weight": 10
+      "value": "hysteria2",
+      "weight": -15
     },
     {
       "field": "security",
-      "value": "tls",
-      "weight": 4
-    },
-    {
-      "field": "country",
-      "value": "🇺🇸",
-      "weight": -5
+      "value": "none",
+      "weight": -10
     },
     {
       "field": "port",
-      "value": "8443",
-      "weight": -3
+      "value": "80",
+      "weight": -5
+    },
+    {
+      "field": "country",
+      "value": "🇷🇺",
+      "weight": -8
     }
   ],
-  "comment": "Понижаем приоритет hysteria2 и серверов в России, повышаем приоритет серверов с протоколом vless и безопасностью reality"
+  "comment": "Пользователям в России рекомендуется использовать vless и reality на порту 443, но избегать hysteria2 и серверов в России"
 }
