@@ -35,13 +35,20 @@ JSON из Karing (скопированный сервер целиком, пол
   { "server": "...", "server_port": 443, "latency": "106", ... }
   Метка действует на все JSON ниже, пока не встретится другая. Без метки цвет берётся по latency:
   есть число больше нуля = зелёный, пусто или 0 = красный (бот скажет об этом в ответе).
-  В файл попадают только адрес, порт, название, тип и мс. Uuid, пароли и ключи не сохраняются.
+
+Что попадает в файл. Всегда: адрес, порт, название, тип, мс. Дополнительно, в конце описания после
+« | », неприватные признаки сервера в виде ключ=значение: sni, fp (отпечаток), flow, sec (защита:
+reality, tls или none), tr (транспорт: tcp, ws, grpc и т. д.), host (заголовок Host для ws и подобных),
+alpn, ins=1 (insecure), obfs (тип обфускации hy2). Признаки берутся из JSON Karing, а если JSON нет
+(строка «з адрес:порт», «з название», «остальные красные»), из ссылки этого сервера в текущих
+подписках. Uuid, пароли, ключи Reality, short_id, имя сервиса grpc и пути в файл НЕ попадают.
 Команды: /help, /last [N], /stats, /undo (убрать записи последнего сообщения), /clean.
 
 Чистка: у каждого сервера хранятся только последние KEEP_PER_SERVER замеров, записи старше
 MAX_AGE_DAYS дней (если дату можно прочитать из метки) удаляются. Удалённое не пропадает, а
 дописывается в data/lte_results_archive.txt.
 """
+import ipaddress
 import json
 import os
 import re
@@ -65,6 +72,11 @@ ARCHIVE_MAX_LINES = 5000     # архив длиннее этого обреза
 TZ = timezone(timedelta(hours=3))   # время в метках: Москва
 MAX_AMBIGUOUS_SHOWN = 6
 RECENT_GREEN_HOURS = 12      # «остальные красные» не трогает серверы, зелёные за последние столько часов
+SAVE_FEATURES = True         # писать признаки сервера (sni, fp, flow, sec, tr ...) в описание; False = как раньше
+FEATURE_SEP = " | "          # отделяет признаки от названия в описании
+
+# порядок, в котором признаки пишутся в файл (только неприватные)
+FEATURE_ORDER = ("sni", "fp", "flow", "sec", "tr", "host", "alpn", "ins", "obfs")
 
 GREEN_WORDS = {"з", "g", "+", "зел", "зелёный", "зеленый", "green", "ok", "ок"}
 RED_WORDS = {"к", "r", "-", "кр", "красный", "red"}
@@ -79,7 +91,8 @@ HELP = (
     "за последние 12 часов, не трогаю)\n\n"
     "Можно слать JSON сервера из Karing. В строке перед ним поставь з (рабочий) или к (нерабочий). "
     "Метка действует на все JSON ниже, пока не встретится другая. Без метки цвет беру по latency: "
-    "число = зелёный, пусто или 0 = красный. Ключи и uuid в файл не пишу.\n\n"
+    "число = зелёный, пусто или 0 = красный. Из JSON сохраняю адрес, порт, название и неприватные "
+    "признаки (SNI, отпечаток, flow, защита, транспорт). Ключи, uuid и short_id в файл не пишу.\n\n"
     "Цвет: з, g, + = зелёный; к, r, - = красный.\n"
     "Команды: /last [N] последние записи, /stats сводка, /undo убрать записи последнего "
     "сообщения, /clean почистить старое сейчас.\n"
@@ -134,6 +147,124 @@ def save_state(state):
 
 
 # =====================================================================
+#                          признаки сервера (только неприватные)
+# =====================================================================
+def _is_ip(text):
+    try:
+        ipaddress.ip_address(str(text).strip().strip("[]"))
+        return True
+    except ValueError:
+        return False
+
+
+def _clean_val(value, limit=60):
+    """Значение признака: нижний регистр, без пробелов и разделителей файла."""
+    s = str(value if value is not None else "").strip().lower()
+    s = re.sub(r"[\s;|]+", "", s).replace(",", "/")
+    return s[:limit]
+
+
+def _sni_value(sni):
+    s = _clean_val(sni)
+    if not s:
+        return ""
+    return "ip" if _is_ip(s) else s
+
+
+def _flow_value(flow):
+    s = _clean_val(flow)
+    return s.replace("xtls-rprx-", "")
+
+
+def json_features(obj):
+    """Признаки из JSON сервера Karing (формат sing-box). Секреты не читаются совсем."""
+    feat = {}
+    if not isinstance(obj, dict):
+        return feat
+    tls = obj.get("tls") if isinstance(obj.get("tls"), dict) else {}
+    kind = str(obj.get("type", "")).lower()
+    if tls:
+        feat["sni"] = _sni_value(tls.get("server_name"))
+        utls = tls.get("utls") if isinstance(tls.get("utls"), dict) else {}
+        feat["fp"] = _clean_val(utls.get("fingerprint"))
+        reality = tls.get("reality") if isinstance(tls.get("reality"), dict) else {}
+        if tls.get("enabled"):
+            feat["sec"] = "reality" if reality.get("enabled") else "tls"
+        else:
+            feat["sec"] = "none"
+        if tls.get("insecure"):
+            feat["ins"] = "1"
+        alpn = tls.get("alpn")
+        if isinstance(alpn, list) and alpn:
+            feat["alpn"] = _clean_val("/".join(str(a) for a in alpn))
+        elif isinstance(alpn, str):
+            feat["alpn"] = _clean_val(alpn)
+    elif kind in ("vless", "vmess", "trojan"):
+        feat["sec"] = "none"
+    feat["flow"] = _flow_value(obj.get("flow"))
+    transport = obj.get("transport") if isinstance(obj.get("transport"), dict) else {}
+    if transport.get("type"):
+        feat["tr"] = _clean_val(transport.get("type"))
+    elif kind in ("vless", "vmess", "trojan"):
+        feat["tr"] = "tcp"
+    host = transport.get("host")
+    if not host and isinstance(transport.get("headers"), dict):
+        host = transport["headers"].get("Host") or transport["headers"].get("host")
+    if isinstance(host, list):
+        host = host[0] if host else ""
+    feat["host"] = _clean_val(host)
+    obfs = obj.get("obfs")
+    if isinstance(obfs, dict) and obfs.get("type"):
+        feat["obfs"] = _clean_val(obfs.get("type"))
+    elif obfs:
+        feat["obfs"] = "1"
+    return {k: v for k, v in feat.items() if v}
+
+
+def uri_features(line):
+    """Признаки из ссылки подписки (vless://, trojan://, hysteria2://). Секреты не читаются."""
+    feat = {}
+    try:
+        u = urllib.parse.urlparse(line.strip())
+        q = {k.lower(): v for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)}
+    except ValueError:
+        return feat
+    scheme = (u.scheme or "").lower()
+    is_hy2 = scheme in ("hysteria2", "hy2")
+    security = q.get("security", "").lower()
+    if not security:
+        security = "tls" if (scheme == "trojan" or is_hy2) else "none"
+    feat["sec"] = security
+    feat["sni"] = _sni_value(q.get("sni") or q.get("peer") or q.get("servername"))
+    feat["fp"] = _clean_val(q.get("fp"))
+    feat["flow"] = _flow_value(q.get("flow"))
+    if not is_hy2:
+        feat["tr"] = _clean_val(q.get("type")) or "tcp"
+    feat["host"] = _clean_val(q.get("host"))
+    feat["alpn"] = _clean_val(q.get("alpn"))
+    if q.get("insecure", "").lower() in ("1", "true") or q.get("allowinsecure", "").lower() in ("1", "true"):
+        feat["ins"] = "1"
+    if is_hy2 and q.get("obfs"):
+        feat["obfs"] = _clean_val(q.get("obfs"))
+    return {k: v for k, v in feat.items() if v}
+
+
+def features_text(feat):
+    if not SAVE_FEATURES or not feat:
+        return ""
+    return " ".join("%s=%s" % (k, feat[k]) for k in FEATURE_ORDER if feat.get(k))
+
+
+def with_features(base, feat):
+    """Описание для файла: название и тип, затем « | » и признаки."""
+    base = (base or "").strip()
+    ft = features_text(feat)
+    if not ft:
+        return base
+    return (base + FEATURE_SEP + ft) if base else ft
+
+
+# =====================================================================
 #                          подписки: название -> адрес
 # =====================================================================
 def subscription_files():
@@ -155,7 +286,7 @@ def norm_name(text):
 
 
 def load_servers():
-    """Серверы из текущих подписок: [{group, name, norm, addr, proto}]."""
+    """Серверы из текущих подписок: [{group, name, norm, addr, proto, feat}]."""
     servers = []
     for group, path in subscription_files():
         for line in read_lines(path):
@@ -170,7 +301,8 @@ def load_servers():
                 continue
             name = urllib.parse.unquote(u.fragment).replace("\u2705", "").strip() or host
             servers.append({"group": group, "name": name, "norm": norm_name(name),
-                            "addr": "%s:%d" % (host, port), "proto": (u.scheme or "").lower()})
+                            "addr": "%s:%d" % (host, port), "proto": (u.scheme or "").lower(),
+                            "feat": uri_features(line)})
     return servers
 
 
@@ -245,9 +377,10 @@ def extract_json_servers(text):
     return items, "\n".join(x for x in rest if x.strip())
 
 
-def json_record(obj, color):
+def json_record(obj, color, fallback_feat=None):
     """JSON сервера из Karing -> (G/R, адрес, описание, мс, цвет_угадан) или None.
-    Из JSON берутся только server, server_port, tag, type, latency."""
+    Из JSON берутся только server, server_port, tag, type, latency и неприватные признаки
+    (json_features). Если признаков в JSON нет совсем, берутся из ссылки подписки (fallback_feat)."""
     host = str(obj.get("server", "")).strip().lower().strip("[]")
     try:
         port = int(obj.get("server_port"))
@@ -262,7 +395,11 @@ def json_record(obj, color):
     guessed = color is None
     res = color or ("G" if ms else "R")
     tag = FLAG_RE.sub("", str(obj.get("tag", ""))).strip()
-    desc = ("%s %s" % (tag, obj.get("type", ""))).strip()
+    base = ("%s %s" % (tag, obj.get("type", ""))).strip()
+    feat = json_features(obj)
+    if not feat and fallback_feat:
+        feat = fallback_feat
+    desc = with_features(base, feat)
     return res, "%s:%d" % (host, port), desc, (ms if res == "G" else ""), guessed
 
 
@@ -344,13 +481,24 @@ def handle_text(text, when, state, lines, servers):
     if low.startswith("/"):
         return "Не знаю такой команды. /help покажет, что я умею."
 
+    # адрес -> сервер из текущих подписок (для признаков и типа, если в сообщении их нет)
+    by_addr = {}
+    for s in servers:
+        by_addr.setdefault(s["addr"], s)
+
     json_items, text_rest = extract_json_servers(stripped)
     parsed = [(ln, parse_line(ln)) for ln in text_rest.splitlines() if ln.strip()]
     added, skipped, ambiguous, rest_cmds = [], [], [], []
     green_addrs, mentioned = set(), set()
     guessed_n = 0
     for color, obj in json_items:
-        rec = json_record(obj, color)
+        try:
+            probe_addr = "%s:%d" % (str(obj.get("server", "")).strip().lower().strip("[]"),
+                                    int(obj.get("server_port")))
+        except (TypeError, ValueError):
+            probe_addr = ""
+        fb = (by_addr.get(probe_addr) or {}).get("feat")
+        rec = json_record(obj, color, fb)
         if rec is None:
             skipped.append("JSON без адреса или порта сервера")
             continue
@@ -372,7 +520,9 @@ def handle_text(text, when, state, lines, servers):
             rest_cmds.append(p)
         else:
             if "addr" in p:
-                targets = [{"addr": p["addr"], "name": p.get("note") or "", "proto": ""}]
+                known = by_addr.get(p["addr"]) or {}
+                targets = [{"addr": p["addr"], "name": p.get("note") or known.get("name") or "",
+                            "proto": known.get("proto", ""), "feat": known.get("feat")}]
             else:
                 found = find_servers(p["query"], servers, p.get("group"))
                 if not found:
@@ -383,7 +533,8 @@ def handle_text(text, when, state, lines, servers):
                     continue
                 targets = [found[0]]
             for t in targets:
-                desc = (t["name"] + (" " + t["proto"] if t.get("proto") else "")).strip()
+                base = (t["name"] + (" " + t["proto"] if t.get("proto") else "")).strip()
+                desc = with_features(base, t.get("feat"))
                 new_line = result_line(label, p["res"], t["addr"], desc, p["ms"])
                 if new_line not in lines and new_line not in added:
                     added.append(new_line)
@@ -398,7 +549,8 @@ def handle_text(text, when, state, lines, servers):
                 continue
             if s["addr"] in mentioned or s["addr"] in protected:
                 continue
-            desc = ("остальные красные: %s %s" % (s["name"], s["proto"])).strip()
+            base = ("остальные красные: %s %s" % (s["name"], s["proto"])).strip()
+            desc = with_features(base, s.get("feat"))
             new_line = result_line(label, "R", s["addr"], desc, "")
             if new_line not in lines and new_line not in added:
                 added.append(new_line)
@@ -414,6 +566,11 @@ def handle_text(text, when, state, lines, servers):
     if added:
         reply.append("Записано: зелёных %d, красных %d%s." % (
             g, r, " (из них по «остальные красные»: %d)" % rest_count if rest_count else ""))
+        if SAVE_FEATURES:
+            no_feat = sum(1 for a in added if "=" not in (a.split(";")[3] if a.count(";") >= 3 else ""))
+            if no_feat:
+                reply.append("У %d записей нет признаков (SNI, отпечаток и т. д.): сервера нет в JSON "
+                             "и в текущих подписках." % no_feat)
         if guessed_n:
             reply.append("У %d JSON не было метки з/к, цвет определил по latency (число = зелёный, "
                          "пусто или 0 = красный). Если ошибся, /undo и пришли заново с меткой." % guessed_n)
