@@ -329,3 +329,4 @@
 2026-11-23 13:59;R;4935e4t.de25.h1clayd.click:443;Румыния Бухарест vless | sni=4935e4t.de25.h1clayd.click fp=ios flow=vision sec=reality tr=tcp;
 2026-11-23 13:59;G;31.76.3.52:443;Швеция Стокгольм vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;111
 2026-11-23 13:59;R;79.182.39.135:443;Нидерланды Керкраде vless | sni=15b171g.nl7.h1clayd.click fp=firefox sec=reality tr=grpc;
+2026-11-23 14:00;R;45.9.120.53:443;Германия Франкфурт vless | sni=961ec0g.nl13.h1clayd.click fp=edge sec=reality tr=grpc;
