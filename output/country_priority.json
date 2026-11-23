@@ -1,80 +1,62 @@
 {
- "updated_utc": "2026-11-23T00:55:34",
+ "updated_utc": "2026-11-23T05:38:04",
  "rkn_ranges": 16221,
  "rkn_penalty_ms": 250,
  "tspu_asn_count": 10,
  "countries": {
-  "TR": {
-   "servers": 18,
-   "probed": 7,
-   "probe_mean": 0.857,
+  "HK": {
+   "servers": 22,
+   "probed": 6,
+   "probe_mean": 0.944,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
-   "quality": 0.914,
-   "bonus_ms": 7.0
+   "quality": 0.967,
+   "bonus_ms": 13.6
+  },
+  "SG": {
+   "servers": 37,
+   "probed": 16,
+   "probe_mean": 0.958,
+   "rkn_share": 0.027,
+   "tspu_share": 0.162,
+   "quality": 0.937,
+   "bonus_ms": 10.1
   },
   "EE": {
    "servers": 13,
-   "probed": 9,
-   "probe_mean": 0.852,
+   "probed": 11,
+   "probe_mean": 0.879,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
-   "quality": 0.911,
-   "bonus_ms": 6.6
+   "quality": 0.927,
+   "bonus_ms": 8.9
   },
   "BR": {
    "servers": 9,
-   "probed": 0,
-   "probe_mean": null,
+   "probed": 1,
+   "probe_mean": 0.0,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
-   "quality": 0.909,
-   "bonus_ms": 6.4
+   "quality": 0.917,
+   "bonus_ms": 7.6
   },
   "KR": {
    "servers": 12,
-   "probed": 1,
-   "probe_mean": 0.667,
+   "probed": 2,
+   "probe_mean": 0.833,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
-   "quality": 0.909,
-   "bonus_ms": 6.4
+   "quality": 0.917,
+   "bonus_ms": 7.6
   },
-  "HK": {
-   "servers": 19,
-   "probed": 3,
-   "probe_mean": 0.889,
+  "RO": {
+   "servers": 10,
+   "probed": 4,
+   "probe_mean": 0.833,
    "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": 0.909,
-   "bonus_ms": 6.4
-  },
-  "SG": {
-   "servers": 33,
-   "probed": 14,
-   "probe_mean": 0.905,
-   "rkn_share": 0.03,
-   "tspu_share": 0.182,
-   "quality": 0.9,
-   "bonus_ms": 5.3
-  },
-  "DE": {
-   "servers": 64,
-   "probed": 17,
-   "probe_mean": 0.922,
-   "rkn_share": 0.203,
-   "tspu_share": 0.156,
-   "quality": 0.881,
-   "bonus_ms": 3.0
-  },
-  "SE": {
-   "servers": 8,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.25,
-   "tspu_share": 0.0,
-   "quality": 0.859,
-   "bonus_ms": 0.4
+   "tspu_share": 0.1,
+   "quality": 0.897,
+   "bonus_ms": 5.2
   },
   "FI": {
    "servers": 8,
@@ -82,17 +64,26 @@
    "probe_mean": 1.0,
    "rkn_share": 0.0,
    "tspu_share": 0.25,
-   "quality": 0.859,
-   "bonus_ms": 0.4
+   "quality": 0.867,
+   "bonus_ms": 1.6
   },
-  "BZ": {
-   "servers": 1,
+  "PL": {
+   "servers": 11,
+   "probed": 3,
+   "probe_mean": 1.0,
+   "rkn_share": 0.273,
+   "tspu_share": 0.0,
+   "quality": 0.862,
+   "bonus_ms": 1.1
+  },
+  "SE": {
+   "servers": 10,
    "probed": 0,
    "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 1.0,
-   "quality": null,
-   "bonus_ms": 0.0
+   "rkn_share": 0.3,
+   "tspu_share": 0.0,
+   "quality": 0.857,
+   "bonus_ms": 0.4
   },
   "HU": {
    "servers": 1,
@@ -103,12 +94,21 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "LU": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 1.0,
-   "tspu_share": 0.0,
+  "DE": {
+   "servers": 76,
+   "probed": 23,
+   "probe_mean": 0.87,
+   "rkn_share": 0.211,
+   "tspu_share": 0.132,
+   "quality": 0.853,
+   "bonus_ms": 0.0
+  },
+  "CY": {
+   "servers": 3,
+   "probed": 2,
+   "probe_mean": 0.667,
+   "rkn_share": 0.333,
+   "tspu_share": 0.333,
    "quality": null,
    "bonus_ms": 0.0
   },
@@ -121,28 +121,19 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "CY": {
-   "servers": 3,
-   "probed": 1,
-   "probe_mean": 0.667,
-   "rkn_share": 0.333,
-   "tspu_share": 0.333,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "ES": {
-   "servers": 5,
-   "probed": 3,
-   "probe_mean": 0.667,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "PT": {
+  "BZ": {
    "servers": 1,
    "probed": 0,
    "probe_mean": null,
+   "rkn_share": 0.0,
+   "tspu_share": 1.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "TW": {
+   "servers": 7,
+   "probed": 2,
+   "probe_mean": 0.833,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
@@ -158,7 +149,7 @@
    "bonus_ms": 0.0
   },
   "AL": {
-   "servers": 2,
+   "servers": 3,
    "probed": 1,
    "probe_mean": 1.0,
    "rkn_share": 0.0,
@@ -168,9 +159,45 @@
   },
   "BY": {
    "servers": 6,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "PT": {
+   "servers": 1,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "ES": {
+   "servers": 5,
+   "probed": 2,
+   "probe_mean": 0.667,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "NG": {
+   "servers": 2,
+   "probed": 1,
+   "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "IT": {
+   "servers": 2,
    "probed": 0,
    "probe_mean": null,
-   "rkn_share": 0.0,
+   "rkn_share": 1.0,
    "tspu_share": 0.0,
    "quality": null,
    "bonus_ms": 0.0
@@ -184,15 +211,6 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "CZ": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 1.0,
-   "tspu_share": 1.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
   "DK": {
    "servers": 1,
    "probed": 1,
@@ -202,46 +220,19 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "NG": {
-   "servers": 1,
-   "probed": 1,
-   "probe_mean": 1.0,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "AU": {
-   "servers": 6,
-   "probed": 0,
-   "probe_mean": null,
-   "rkn_share": 0.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
   "SK": {
    "servers": 4,
-   "probed": 0,
-   "probe_mean": null,
+   "probed": 1,
+   "probe_mean": 1.0,
    "rkn_share": 0.0,
    "tspu_share": 0.25,
    "quality": null,
    "bonus_ms": 0.0
   },
-  "PL": {
-   "servers": 7,
-   "probed": 3,
-   "probe_mean": 1.0,
-   "rkn_share": 0.286,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "TW": {
-   "servers": 4,
-   "probed": 2,
-   "probe_mean": 0.833,
+  "LY": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
@@ -252,15 +243,6 @@
    "probed": 0,
    "probe_mean": null,
    "rkn_share": 1.0,
-   "tspu_share": 0.0,
-   "quality": null,
-   "bonus_ms": 0.0
-  },
-  "AT": {
-   "servers": 2,
-   "probed": 2,
-   "probe_mean": 1.0,
-   "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
    "bonus_ms": 0.0
@@ -283,10 +265,10 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "AR": {
-   "servers": 1,
-   "probed": 0,
-   "probe_mean": null,
+  "AT": {
+   "servers": 2,
+   "probed": 2,
+   "probe_mean": 1.0,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
@@ -301,10 +283,28 @@
    "quality": null,
    "bonus_ms": 0.0
   },
+  "GR": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 1.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
   "NE": {
-   "servers": 2,
-   "probed": 1,
+   "servers": 3,
+   "probed": 2,
    "probe_mean": 1.0,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "AR": {
+   "servers": 1,
+   "probed": 0,
+   "probe_mean": null,
    "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
@@ -320,7 +320,7 @@
    "bonus_ms": 0.0
   },
   "AE": {
-   "servers": 2,
+   "servers": 1,
    "probed": 1,
    "probe_mean": 0.333,
    "rkn_share": 0.0,
@@ -328,17 +328,26 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "KZ": {
-   "servers": 4,
-   "probed": 2,
-   "probe_mean": 0.833,
-   "rkn_share": 0.25,
+  "IN": {
+   "servers": 3,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.0,
    "tspu_share": 0.0,
    "quality": null,
    "bonus_ms": 0.0
   },
-  "IN": {
+  "KZ": {
    "servers": 3,
+   "probed": 2,
+   "probe_mean": 0.833,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "SA": {
+   "servers": 1,
    "probed": 0,
    "probe_mean": null,
    "rkn_share": 0.0,
@@ -373,86 +382,95 @@
    "quality": null,
    "bonus_ms": 0.0
   },
-  "RU": {
-   "servers": 25,
-   "probed": 11,
-   "probe_mean": 0.848,
-   "rkn_share": 0.28,
+  "AU": {
+   "servers": 5,
+   "probed": 0,
+   "probe_mean": null,
+   "rkn_share": 0.0,
    "tspu_share": 0.0,
-   "quality": 0.853,
+   "quality": null,
+   "bonus_ms": 0.0
+  },
+  "RU": {
+   "servers": 27,
+   "probed": 12,
+   "probe_mean": 0.861,
+   "rkn_share": 0.333,
+   "tspu_share": 0.0,
+   "quality": 0.85,
+   "bonus_ms": -0.4
+  },
+  "TR": {
+   "servers": 18,
+   "probed": 8,
+   "probe_mean": 0.75,
+   "rkn_share": 0.0,
+   "tspu_share": 0.0,
+   "quality": 0.85,
    "bonus_ms": -0.4
   },
   "CH": {
    "servers": 12,
    "probed": 2,
    "probe_mean": 0.5,
-   "rkn_share": 0.5,
+   "rkn_share": 0.583,
    "tspu_share": 0.0,
-   "quality": 0.809,
-   "bonus_ms": -5.6
-  },
-  "RO": {
-   "servers": 9,
-   "probed": 5,
-   "probe_mean": 0.667,
-   "rkn_share": 0.0,
-   "tspu_share": 0.111,
-   "quality": 0.778,
-   "bonus_ms": -9.4
-  },
-  "CA": {
-   "servers": 130,
-   "probed": 28,
-   "probe_mean": 0.94,
-   "rkn_share": 0.015,
-   "tspu_share": 0.931,
-   "quality": 0.775,
-   "bonus_ms": -9.7
-  },
-  "US": {
-   "servers": 139,
-   "probed": 34,
-   "probe_mean": 0.725,
-   "rkn_share": 0.029,
-   "tspu_share": 0.273,
-   "quality": 0.775,
-   "bonus_ms": -9.7
+   "quality": 0.8,
+   "bonus_ms": -6.4
   },
   "FR": {
-   "servers": 19,
+   "servers": 22,
    "probed": 2,
    "probe_mean": 0.5,
-   "rkn_share": 0.263,
-   "tspu_share": 0.421,
-   "quality": 0.772,
-   "bonus_ms": -10.1
+   "rkn_share": 0.227,
+   "tspu_share": 0.364,
+   "quality": 0.798,
+   "bonus_ms": -6.6
+  },
+  "US": {
+   "servers": 142,
+   "probed": 39,
+   "probe_mean": 0.726,
+   "rkn_share": 0.028,
+   "tspu_share": 0.254,
+   "quality": 0.78,
+   "bonus_ms": -8.9
   },
   "JP": {
-   "servers": 38,
-   "probed": 11,
-   "probe_mean": 0.697,
-   "rkn_share": 0.026,
-   "tspu_share": 0.368,
-   "quality": 0.739,
-   "bonus_ms": -14.0
+   "servers": 35,
+   "probed": 10,
+   "probe_mean": 0.767,
+   "rkn_share": 0.029,
+   "tspu_share": 0.4,
+   "quality": 0.774,
+   "bonus_ms": -9.5
   },
-  "NL": {
-   "servers": 73,
-   "probed": 15,
-   "probe_mean": 0.689,
-   "rkn_share": 0.164,
-   "tspu_share": 0.37,
-   "quality": 0.706,
-   "bonus_ms": -18.0
+  "CA": {
+   "servers": 135,
+   "probed": 28,
+   "probe_mean": 0.929,
+   "rkn_share": 0.015,
+   "tspu_share": 0.956,
+   "quality": 0.763,
+   "bonus_ms": -10.8
   },
   "GB": {
    "servers": 25,
-   "probed": 13,
-   "probe_mean": 0.564,
+   "probed": 16,
+   "probe_mean": 0.646,
    "rkn_share": 0.08,
    "tspu_share": 0.12,
-   "quality": 0.698,
-   "bonus_ms": -18.9
+   "quality": 0.748,
+   "bonus_ms": -12.7
+  },
+  "NL": {
+   "servers": 74,
+   "probed": 20,
+   "probe_mean": 0.7,
+   "rkn_share": 0.162,
+   "tspu_share": 0.338,
+   "quality": 0.72,
+   "bonus_ms": -16.0
   }
  }
 }
