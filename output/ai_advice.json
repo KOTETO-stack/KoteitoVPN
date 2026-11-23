@@ -2,29 +2,24 @@
   "rules": [
     {
       "field": "protocol",
+      "value": "hysteria2",
+      "weight": -10
+    },
+    {
+      "field": "protocol",
       "value": "vless",
-      "weight": 10
+      "weight": 5
     },
     {
       "field": "security",
       "value": "reality",
-      "weight": 8
+      "weight": 3
     },
     {
       "field": "port",
       "value": "443",
-      "weight": 6
-    },
-    {
-      "field": "country",
-      "value": "🇷🇺",
-      "weight": -5
-    },
-    {
-      "field": "protocol",
-      "value": "hysteria2",
-      "weight": -10
+      "weight": 2
     }
   ],
-  "comment": "Пользователям в России рекомендуется использовать vless и reality для повышения безопасности и стабильности соединения"
+  "comment": "Протокол hysteria2 имеет низкий приоритет из-за проблем с подключением, в то время как vless и reality имеют более высокий приоритет из-за их популярности и безопасности"
 }
