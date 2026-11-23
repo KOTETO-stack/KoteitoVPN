@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-23 09:59;R;103.249.132.107:443;Нидерланды Амстердам-5 vless | sni=cf-1rm.pages.dev fp=chrome sec=tls tr=ws host=cf-1rm.pages.dev;"
+  "2026-11-23 09:59;R;79.182.70.192:443;Беларусь Минск vless | sni=15d7fft.nl11.h1clayd.click fp=firefox sec=reality tr=tcp;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828361,
   885828362,
   885828363,
   885828364,
@@ -103,6 +102,7 @@
   885828453,
   885828458,
   885828457,
-  885828459
+  885828459,
+  885828461
  ]
 }
