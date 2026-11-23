@@ -315,3 +315,4 @@
 2026-11-23 09:59;R;132.243.163.125:443;Британия Лондон vless | sni=4935e4t.de25.h1clayd.click fp=firefox flow=vision sec=reality tr=tcp;
 2026-11-23 09:59;R;f0d7aft.nl17.h1clayd.click:443;Румыния Бухарест-1 vless | sni=f0d7aft.nl17.h1clayd.click fp=firefox sec=reality tr=tcp;
 2026-11-23 09:59;R;103.119.15.175:443;Бразилия Сан-Паулу vless | sni=www.amazon.com fp=chrome flow=vision sec=reality tr=tcp;
+2026-11-23 09:59;R;103.75.118.228:12683;Япония Токио vless | sni=www.apple.com fp=chrome flow=vision sec=reality tr=tcp;
