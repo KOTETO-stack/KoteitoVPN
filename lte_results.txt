@@ -322,3 +322,4 @@
 2026-11-23 09:59;R;195.216.169.182:9543;Франция Париж vless | sni=storage.yandexcloud.net fp=firefox flow=vision sec=reality tr=tcp;
 2026-11-23 09:59;R;162.35.101.177:443;США Лос-Анджелес-1 vless | sni=0592efg.us8.h1clayd.click fp=edge sec=reality tr=grpc;
 2026-11-23 09:59;R;123.111.169.70:8443;Республика Корея Сеул-1 vless | sni=v1n3.11676767.xyz fp=chrome sec=tls tr=ws host=v1n3.11676767.xyz;
+2026-11-23 09:59;R;147.45.47.101:8443;Россия Шергино vless | sni=apple.com fp=chrome flow=vision sec=reality tr=tcp;
