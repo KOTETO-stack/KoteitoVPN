@@ -183,7 +183,6 @@
 2026-11-15 12:13;R;104.16.0.1:443;Канада Торонто-3 vless;
 2026-11-15 12:13;R;185.36.143.71:443;Нидерланды Меппел-1 vless;
 2026-11-15 18:57;G;45.13.186.188:443;Германия Франкфурт vless;93
-2026-11-15 18:57;G;4935e4t.de25.h1clayd.click:443;Британия Лондон vless;463
 2026-11-15 18:57;R;103.172.116.201:10303;Сингапур Сингапур-3 vless;
 2026-11-15 18:57;R;95.128.71.79:10444;Беларусь Минск vless;
 2026-11-15 18:59;R;196.199.122.2:443;Ливия Триполи vless;
@@ -327,3 +326,4 @@
 2026-11-23 10:01;G;31.76.3.52:443;Швеция Стокгольм-1 vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;76
 2026-11-23 10:14;R;123.111.169.70:8443;Республика Корея Сеул-1 vless | sni=v1n3.11676767.xyz fp=chrome sec=tls tr=ws host=v1n3.11676767.xyz;
 2026-11-23 13:58;R;83.217.201.82:443;Россия Москва vless | sni=skvoz-dpi.com fp=firefox flow=vision sec=reality tr=tcp;
+2026-11-23 13:59;R;4935e4t.de25.h1clayd.click:443;Румыния Бухарест vless | sni=4935e4t.de25.h1clayd.click fp=ios flow=vision sec=reality tr=tcp;

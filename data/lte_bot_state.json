@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-23 13:58;R;83.217.201.82:443;Россия Москва vless | sni=skvoz-dpi.com fp=firefox flow=vision sec=reality tr=tcp;"
+  "2026-11-23 13:59;R;4935e4t.de25.h1clayd.click:443;Румыния Бухарест vless | sni=4935e4t.de25.h1clayd.click fp=ios flow=vision sec=reality tr=tcp;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828365,
   885828366,
   885828367,
   885828368,
@@ -103,6 +102,7 @@
   885828461,
   885828462,
   885828463,
-  885828464
+  885828464,
+  885828465
  ]
 }
