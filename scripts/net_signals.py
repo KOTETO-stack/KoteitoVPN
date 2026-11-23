@@ -27,6 +27,8 @@ net_signals.py
       делает сервер «мигающим» и не отнимает у него закрепление. Если у сервера только ночные
       красные замеры, штраф умножается на LTE_NIGHT_RED_FACTOR. Зелёный ночной замер даёт
       добавку LTE_NIGHT_GREEN_EXTRA_MS («ночной выживший»), ночью выбирать не из чего.
+      Сводки по протоколам, подсетям, признакам и режим белых списков тоже не берут красные
+      ночные замеры (раньше брали).
     - Прямой замер. Сервер, зелёный в последнем замере (не мигал), получает бонус
       LTE_SERVER_GREEN_BONUS_MS * вес; красный получает штраф LTE_SERVER_RED_PENALTY_MS * вес.
     - Закрепление. Сервер, зелёный на LTE не позже LTE_PIN_DAYS дней назад, build_subscription.py
@@ -34,7 +36,8 @@ net_signals.py
     - Серверы без своего замера оцениваются по свежим замерам (не старше LTE_STATS_DAYS дней):
       по протоколу (если у протокола почти все замеры красные, штраф LTE_PROTO_DEAD_PENALTY_MS;
       если почти все зелёные, бонус), по подсети /24 (рядом зелёный сервер без красных: бонус,
-      рядом красный без зелёных: небольшой штраф) или, если подсети нет в замерах, по сети (ASN).
+      рядом красный без зелёных: небольшой штраф) или, если подсети нет в замерах, по сети (ASN),
+      а также по признакам из ссылки сервера (см. п. 6).
       Общий потолок для таких серверов LTE_UNMEASURED_CAP_MS.
     Замеры сняты на одном операторе, поэтому слой по мере накопления данных можно усиливать.
     В лог выводится проверка слоёв по замерам.
@@ -45,6 +48,16 @@ net_signals.py
     по свежим замерам LTE (RU_MODE = "auto"); можно принудительно: "on" всегда, "off" никогда.
     Бонус плавный: растёт с разницей долей зелёных (российские минус зарубежные), поэтому режим
     не «мигает». Российский сервер с красным свежим замером бонуса не получает.
+ 6. Признаки серверов (версия 4). У каждого замеренного сервера, который есть в текущем пуле,
+    берутся признаки из его ссылки: SNI целиком и его «семья» (последние две части домена,
+    например h1clayd.click), отпечаток (fp), flow, защита (sec: reality, tls, none), транспорт
+    (tr), порт. Если сервера в пуле нет, признаки берутся из описания замера в lte_results.txt
+    (их туда пишет lte_bot.py после « | »). По свежим решающим замерам считается доля зелёных у
+    каждого значения признака. Серверу БЕЗ своего замера поправка считается по его признакам, у которых не
+    меньше FEAT_MIN_N замеров (берётся самый заметный признак и половина следующего): значение, у которого зелёных больше, чем у
+    всех замеренных, даёт бонус, меньше даёт штраф. Доли сглажены (FEAT_PRIOR), потолок поправки
+    FEAT_MAX_MS. Серверы с собственным замером этим слоем не затрагиваются. В логе печатается
+    таблица признаков, отчёт идёт в output/network_signals.json. Выключается FEAT_ENABLED = False.
 Итог для сервера: adjust_ms(c) = штрафы + замеры LTE + бонус режима белых списков - бонус страны
 (в мс, как пинг).
 """
@@ -55,6 +68,7 @@ import os
 import re
 import statistics
 import time
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -125,6 +139,17 @@ LTE_PROTO_GOOD_BONUS_MS = 40      # бонус серверам такого п�
 LTE_PROTO_MILD_MAX_MS = 30        # потолок мягкой поправки между порогами
 
 LTE_UNMEASURED_CAP_MS = 150       # потолок суммарной поправки серверу без своего замера
+
+# ---------- признаки серверов (SNI, отпечаток, flow, транспорт, порт) ----------
+FEAT_ENABLED = True               # False = слой признаков выключен
+FEAT_KEYS = ("snifam", "sni", "fp", "flow", "tr", "sec", "port")   # по каким признакам считаем
+FEAT_MIN_N = 5                    # столько решающих замеров нужно у значения признака, чтобы оно влияло
+FEAT_PRIOR = 4                    # сглаживание: сколько «воображаемых» замеров с общей долей добавляется
+FEAT_SPAN_MS = 120                # мс за разницу долей зелёных в 1.0 (потом режется потолком)
+FEAT_MAX_MS = 60                  # потолок поправки от признаков серверу без замера
+FEAT_LOG_MIN_N = 3                # в лог идут значения признаков с таким числом замеров и больше
+FEAT_LOG_MAX_ROWS = 60            # сколько строк таблицы признаков печатать
+FEAT_REPORT_MAX_ROWS = 80         # сколько значений признаков писать в network_signals.json
 
 # ---------- режим белых списков (российские серверы выше) ----------
 RU_MODE = "auto"                  # "auto": включается сам по замерам LTE, "on": всегда, "off": выключен
@@ -216,6 +241,87 @@ def prefix24(ip):
     if addr.version != 4:
         return ""
     return ".".join(str(addr).split(".")[:3])
+
+
+# =====================================================================
+#                          признаки серверов
+# =====================================================================
+FEAT_RE = re.compile(r"\b(sni|fp|flow|sec|tr|host|alpn|ins|obfs)=([^\s|]+)")
+
+
+def _is_ip(text):
+    try:
+        ipaddress.ip_address(str(text).strip().strip("[]"))
+        return True
+    except ValueError:
+        return False
+
+
+def _norm_val(value):
+    return re.sub(r"[\s;|]+", "", str(value or "").strip().lower())
+
+
+def sni_family(sni):
+    """'717252g.nl8.h1clayd.click' -> 'h1clayd.click'. Для IP и коротких имён пусто."""
+    s = _norm_val(sni)
+    if not s or s == "ip" or _is_ip(s):
+        return ""
+    labels = [x for x in s.split(".") if x]
+    return ".".join(labels[-2:]) if len(labels) >= 2 else ""
+
+
+def _finish_features(feat, port=None):
+    """Добавляет порт и «семью» SNI к словарю признаков."""
+    out = dict(feat)
+    if port:
+        out["port"] = str(port)
+    fam = sni_family(out.get("sni"))
+    if fam:
+        out["snifam"] = fam
+    return out
+
+
+def desc_features(desc):
+    """Признаки из описания замера в lte_results.txt (после « | », пишет lte_bot.py)."""
+    out = {}
+    for k, v in FEAT_RE.findall(desc or ""):
+        out[k] = v.lower()
+    return out
+
+
+def uri_features(raw):
+    """Неприватные признаки из ссылки vless://, trojan://, hysteria2://: sec, sni, fp, flow, tr."""
+    out = {}
+    try:
+        u = urllib.parse.urlparse(str(raw or "").strip())
+        q = {k.lower(): v for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)}
+    except ValueError:
+        return out
+    scheme = (u.scheme or "").lower()
+    if not scheme:
+        return out
+    hy2 = scheme in ("hysteria2", "hy2")
+    security = q.get("security", "").strip().lower()
+    if not security:
+        security = "tls" if (scheme == "trojan" or hy2) else "none"
+    out["sec"] = security
+    sni = _norm_val(q.get("sni") or q.get("peer") or q.get("servername"))
+    if sni:
+        out["sni"] = "ip" if _is_ip(sni) else sni
+    fp = _norm_val(q.get("fp"))
+    if fp:
+        out["fp"] = fp
+    flow = _norm_val(q.get("flow")).replace("xtls-rprx-", "")
+    if flow:
+        out["flow"] = flow
+    if not hy2:
+        out["tr"] = _norm_val(q.get("type")) or "tcp"
+    return out
+
+
+def features_of(c):
+    """Признаки сервера пула c (словарь build_subscription): ссылка, порт, семья SNI."""
+    return _finish_features(uri_features(c.get("raw", "")), c.get("port"))
 
 
 # =====================================================================
@@ -366,6 +472,9 @@ class LteLayer:
         self.proto_stats = {}     # протокол -> {"g": зелёных, "n": всего} по свежим замерам
         self.overall_share = None  # общая доля зелёных по свежим замерам
         self.net24 = {}           # подсеть /24 -> [зелёных, красных] по свежим замерам
+        self.feat_stats = {}      # (признак, значение) -> [зелёных, всего] по свежим решающим замерам
+        self.feat_share = None    # общая доля зелёных среди замеров, у которых известны признаки
+        self.feat_n = 0           # сколько замеров с признаками вошло в расчёт
         try:
             self._load(asn_info or {})
         except Exception as e:
@@ -425,7 +534,7 @@ class LteLayer:
             _ip, _sep, port = key.rpartition(":")
             rec = {"ip": s["ip"], "asn": asn_number(s["asn"]), "g": s["g"], "r": s["r"],
                    "last": s["last"], "flaky": bool(s["flaky"]), "key": key,
-                   "t": None, "desc": "", "proto": "other", "night_g_t": None}
+                   "t": None, "desc": "", "proto": "other", "night_g_t": None, "feat": {}}
             self.servers[key] = rec
             for h in s["hosts"]:
                 self.by_host["%s:%s" % (h, port)] = rec
@@ -466,6 +575,11 @@ class LteLayer:
             t = parse_label_time(parts[0])
             rec["t"] = t
             rec["desc"] = parts[3] if len(parts) > 3 else ""
+            found = desc_features(rec["desc"])
+            if found:
+                merged = dict(rec.get("feat") or {})
+                merged.update(found)
+                rec["feat"] = _finish_features(merged, parts[2].rpartition(":")[2])
             history.setdefault(id(rec), []).append((t, parts[1].upper(), parts[0]))
         for rec in self.servers.values():
             rec["proto"] = proto_from_text(rec.get("desc", ""))
@@ -519,6 +633,15 @@ class LteLayer:
         age = max(0.0, (self.now - t).total_seconds() / 86400.0)
         return age if age <= LTE_NIGHT_GREEN_DAYS else None
 
+    def decisive(self, rec):
+        """True, если по замеру можно судить о сервере: не мигает, последний замер зелёный или красный,
+        и это не красный ночной замер (ночью красное ничего не значит)."""
+        if rec["flaky"] or rec["last"] not in ("G", "R"):
+            return False
+        if rec["last"] == "R" and is_night_time(rec.get("t")):
+            return False
+        return True
+
     def pinned(self, c, ip):
         """True: сервер зелёный на LTE (последний замер, не мигает) не позже LTE_PIN_DAYS дней назад."""
         rec = self.match(c, ip)
@@ -535,11 +658,12 @@ class LteLayer:
         return self.night_green_age(rec) is not None
 
     def compute_priors(self):
-        """Доли зелёных по протоколам и подсетям /24 по свежим замерам (не старше LTE_STATS_DAYS дней)."""
+        """Доли зелёных по протоколам и подсетям /24 по свежим замерам (не старше LTE_STATS_DAYS дней).
+        Красные ночные замеры не считаются. Затем считает сводку по признакам."""
         stats, net24 = {}, {}
         g_all = r_all = 0
         for rec in self.servers.values():
-            if rec["flaky"] or rec["last"] not in ("G", "R"):
+            if not self.decisive(rec):
                 continue
             age = self.age_days(rec)
             if age is None or age > LTE_STATS_DAYS:
@@ -560,6 +684,63 @@ class LteLayer:
         total = g_all + r_all
         self.overall_share = (g_all / float(total)) if total else None
         self.net24 = net24
+        self.compute_feature_stats()
+
+    def compute_feature_stats(self):
+        """Доля зелёных у каждого значения признака по свежим решающим замерам."""
+        self.feat_stats, self.feat_share, self.feat_n = {}, None, 0
+        if not FEAT_ENABLED:
+            return
+        stats = {}
+        g_all = n_all = 0
+        for rec in self.servers.values():
+            if not self.decisive(rec):
+                continue
+            age = self.age_days(rec)
+            if age is None or age > LTE_STATS_DAYS:
+                continue
+            feat = rec.get("feat") or {}
+            if not feat:
+                continue
+            green = rec["last"] == "G"
+            n_all += 1
+            if green:
+                g_all += 1
+            for k in FEAT_KEYS:
+                v = feat.get(k)
+                if not v:
+                    continue
+                cell = stats.setdefault((k, v), [0, 0])
+                cell[1] += 1
+                if green:
+                    cell[0] += 1
+        self.feat_stats = stats
+        self.feat_n = n_all
+        self.feat_share = (g_all / float(n_all)) if n_all else None
+
+    def feature_ms(self, c):
+        """Поправка серверу без замера по его признакам: минус бонус, плюс штраф, в пределах FEAT_MAX_MS."""
+        if not FEAT_ENABLED or not self.feat_stats or self.feat_share is None:
+            return 0.0
+        feat = features_of(c)
+        base = self.feat_share
+        parts = []
+        for k in FEAT_KEYS:
+            v = feat.get(k)
+            if not v:
+                continue
+            cell = self.feat_stats.get((k, v))
+            if not cell or cell[1] < FEAT_MIN_N:
+                continue
+            share = (cell[0] + FEAT_PRIOR * base) / float(cell[1] + FEAT_PRIOR)
+            parts.append((base - share) * FEAT_SPAN_MS)
+        if not parts:
+            return 0.0
+        # нейтральные признаки (порт 443, tcp) не должны разбавлять сильный: берём самый заметный
+        # и половину следующего по силе
+        parts.sort(key=lambda x: -abs(x))
+        value = parts[0] + (0.5 * parts[1] if len(parts) > 1 else 0.0)
+        return max(-float(FEAT_MAX_MS), min(float(FEAT_MAX_MS), value))
 
     # --- поправка серверу ---
     def adjust_ms(self, c, ip, asn):
@@ -581,7 +762,7 @@ class LteLayer:
         return self.unmeasured_ms(c, ip, asn)
 
     def unmeasured_ms(self, c, ip, asn):
-        """Поправка серверу без своего замера: протокол плюс подсеть /24 (или сеть ASN)."""
+        """Поправка серверу без своего замера: протокол, подсеть /24 (или сеть ASN) и признаки."""
         total = 0.0
         proto = proto_from_text(c.get("proto") or "")
         st = self.proto_stats.get(proto)
@@ -605,6 +786,10 @@ class LteLayer:
                     share = n["green"] / float(solid)
                     shrink = solid / float(solid + LTE_ASN_PRIOR)
                     total += (0.5 - share) * 2.0 * LTE_ASN_MAX_MS * shrink
+        try:
+            total += self.feature_ms(c)
+        except Exception:
+            pass
         return max(-float(LTE_UNMEASURED_CAP_MS), min(float(LTE_UNMEASURED_CAP_MS), total))
 
 
@@ -674,7 +859,8 @@ class Signals:
 
     def _compute_ru_mode(self):
         """Решает, включён ли режим белых списков, по свежим замерам LTE: доля зелёных среди российских
-        серверов против доли среди зарубежных (замеры только серверов текущего пула, у них известна страна)."""
+        серверов против доли среди зарубежных (замеры только серверов текущего пула, у них известна страна).
+        Красные ночные замеры не считаются."""
         self.ru_boost, self.ru_exempt_active, self.ru_stats = 0.0, False, {}
         if RU_MODE == "off":
             self.ru_stats = {"mode": "off"}
@@ -683,7 +869,7 @@ class Signals:
         if self.lte.ok:
             for rec in self.lte.servers.values():
                 cc = rec.get("cc")
-                if not cc or cc == "??" or rec["flaky"] or rec["last"] not in ("G", "R"):
+                if not cc or cc == "??" or not self.lte.decisive(rec):
                     continue
                 age = self.lte.age_days(rec)
                 if age is None or age > RU_MODE_FRESH_DAYS:
@@ -804,6 +990,13 @@ class Signals:
                     if c.get("proto"):
                         rec["proto"] = proto_from_text(c.get("proto"))
                     rec["cc"] = cc
+                    if FEAT_ENABLED:
+                        try:
+                            merged = dict(rec.get("feat") or {})
+                            merged.update(features_of(c))     # ссылка из текущего пула важнее описания замера
+                            rec["feat"] = merged
+                        except Exception:
+                            pass
             s = stats.setdefault(cc, {"n": 0, "probe": [], "rkn": 0, "tspu": 0})
             s["n"] += 1
             if e["rkn"]:
@@ -821,6 +1014,14 @@ class Signals:
             if r is not None:
                 s["probe"].append(r)
 
+        self._pinned = []
+        self._night = []
+        if self.lte.ok:
+            try:
+                self.lte.compute_priors()
+            except Exception as err:
+                log("Замеры LTE: сводки по протоколам, подсетям и признакам не посчитаны (%s)" % err)
+
         try:
             self._compute_ru_mode()
         except Exception as err:
@@ -828,13 +1029,7 @@ class Signals:
             self.ru_stats = {"mode": RU_MODE, "error": str(err)}
             log("Режим белых списков не посчитан (%s)" % err)
 
-        self._pinned = []
-        self._night = []
         if self.lte.ok:
-            try:
-                self.lte.compute_priors()
-            except Exception as err:
-                log("Замеры LTE: сводки по протоколам и подсетям не посчитаны (%s)" % err)
             for c in configs:
                 name = c.get("display_name") or c.get("remark") or "VPN"
                 if self.is_lte_pinned(c):
@@ -939,6 +1134,33 @@ class Signals:
                 % (rs["mode"], rs["ru_total"], RU_MODE_MIN_RU, rs["foreign_total"], RU_MODE_MIN_FOREIGN,
                    round(rs["boost_ms"])))
 
+    def print_features(self):
+        """Таблица признаков серверов: доля зелёных по SNI, семье SNI, отпечатку, flow, транспорту, порту."""
+        if not FEAT_ENABLED:
+            return
+        lte = self.lte
+        if not lte.feat_stats or lte.feat_share is None:
+            log("Признаки серверов: пока нет замеров с известными признаками (они берутся из ссылок серверов "
+                "пула и из описаний новых замеров).")
+            return
+        log("Признаки серверов: решающих замеров с признаками %d, зелёных среди них %d%%; значения с "
+            "%d и более замерами меняют оценку серверов без замера (до %d мс)."
+            % (lte.feat_n, round(100 * lte.feat_share), FEAT_MIN_N, FEAT_MAX_MS))
+        rows = [(k, v, g, n) for (k, v), (g, n) in lte.feat_stats.items() if n >= FEAT_LOG_MIN_N]
+        rows.sort(key=lambda r: (-r[3], r[0], r[1]))
+        if not rows:
+            return
+        log("::group::Признаки серверов на LTE (зелёных из замеренных; влияют при %d+ замерах)" % FEAT_MIN_N)
+        for k, v, g, n in rows[:FEAT_LOG_MAX_ROWS]:
+            mark = ""
+            if n >= FEAT_MIN_N:
+                share = (g + FEAT_PRIOR * lte.feat_share) / float(n + FEAT_PRIOR)
+                ms = (lte.feat_share - share) * FEAT_SPAN_MS
+                if abs(ms) >= 1:
+                    mark = " -> %s %d мс" % ("бонус" if ms < 0 else "штраф", round(abs(ms)))
+            log("%s=%s: %d из %d%s" % (k, v, g, n, mark))
+        log("::endgroup::")
+
     def print_lte(self):
         """Сводка по замерам LTE и проверка слоёв РКН и ТСПУ на этих замерах."""
         if not self.lte.ok:
@@ -981,6 +1203,7 @@ class Signals:
                 parts.append("%s %d из %d%s" % (proto, st["g"], st["n"], mark))
             log("Замеры LTE по протоколам (свежие, за %d дн., зелёных всего %s): %s."
                 % (LTE_STATS_DAYS, share, "; ".join(parts)))
+        self.print_features()
         groups = {"в списках РКН": [0, 0], "в ТСПУ-сетях": [0, 0], "в остальных": [0, 0]}
         for rec in self.lte.servers.values():
             if rec["flaky"] or rec["last"] not in ("G", "R"):
@@ -1028,6 +1251,11 @@ class Signals:
         except Exception as e:
             log("Список РКН не сохранён (%s)" % e)
             return 0
+
+    def feature_report(self):
+        """Таблица признаков для network_signals.json: «признак=значение» -> [зелёных, всего]."""
+        rows = sorted(self.lte.feat_stats.items(), key=lambda kv: (-kv[1][1], kv[0]))
+        return {"%s=%s" % (k, v): [g, n] for (k, v), (g, n) in rows[:FEAT_REPORT_MAX_ROWS]}
 
     def write_country_report(self, path):
         """Пишет output/country_priority.json (как раньше) и рядом output/network_signals.json
@@ -1078,6 +1306,8 @@ class Signals:
                     "pinned": len(getattr(self, "_pinned", [])),
                     "night_survivors": len(getattr(self, "_night", [])),
                     "protocols": {k: dict(v) for k, v in self.lte.proto_stats.items()},
+                    "features": self.feature_report(),
+                    "features_measured": self.lte.feat_n,
                     "server_bonus_ms": LTE_SERVER_GREEN_BONUS_MS,
                     "server_penalty_ms": LTE_SERVER_RED_PENALTY_MS,
                     "network_max_ms": LTE_ASN_MAX_MS,
