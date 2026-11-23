@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-23 09:59;R;103.75.118.228:12683;Япония Токио vless | sni=www.apple.com fp=chrome flow=vision sec=reality tr=tcp;"
+  "2026-11-23 09:59;R;31.210.52.149:443;Турция Фатийх vless | sni=tr-ist-3.koolb.org fp=firefox flow=vision sec=reality tr=tcp;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828353,
   885828354,
   885828355,
   885828356,
@@ -103,6 +102,7 @@
   885828450,
   885828451,
   885828452,
-  885828455
+  885828455,
+  885828449
  ]
 }
