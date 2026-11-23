@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-23 09:59;R;78.17.215.141:443;ФРГ Франкфурт vless | sni=de15-r.bankai.party fp=chrome flow=vision sec=reality tr=tcp;"
+  "2026-11-23 09:59;R;195.216.169.182:9543;Франция Париж vless | sni=storage.yandexcloud.net fp=firefox flow=vision sec=reality tr=tcp;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828356,
   885828357,
   885828358,
   885828359,
@@ -103,6 +102,7 @@
   885828455,
   885828449,
   885828454,
-  885828456
+  885828456,
+  885828460
  ]
 }
