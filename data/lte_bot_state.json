@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-23 13:59;G;31.76.3.52:443;Швеция Стокгольм vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;111"
+  "2026-11-23 13:59;R;79.182.39.135:443;Нидерланды Керкраде vless | sni=15b171g.nl7.h1clayd.click fp=firefox sec=reality tr=grpc;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828367,
   885828368,
   885828369,
   885828370,
@@ -103,6 +102,7 @@
   885828463,
   885828464,
   885828465,
-  885828466
+  885828466,
+  885828467
  ]
 }
