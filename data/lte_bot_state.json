@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-23 09:59;R;45.63.53.81:443;США Лос-Анджелес-2 vless | sni=itunes.apple.com sec=reality tr=ws host=itunes.apple.com;"
+  "2026-11-23 09:59;R;78.17.215.141:443;ФРГ Франкфурт vless | sni=de15-r.bankai.party fp=chrome flow=vision sec=reality tr=tcp;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828355,
   885828356,
   885828357,
   885828358,
@@ -103,6 +102,7 @@
   885828452,
   885828455,
   885828449,
-  885828454
+  885828454,
+  885828456
  ]
 }
