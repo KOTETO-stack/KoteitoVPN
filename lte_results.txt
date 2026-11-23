@@ -325,3 +325,4 @@
 2026-11-23 09:59;R;147.45.47.101:8443;Россия Шергино vless | sni=apple.com fp=chrome flow=vision sec=reality tr=tcp;
 2026-11-23 09:59;R;103.249.132.107:443;Нидерланды Амстердам-5 vless | sni=cf-1rm.pages.dev fp=chrome sec=tls tr=ws host=cf-1rm.pages.dev;
 2026-11-23 09:59;R;79.182.70.192:443;Беларусь Минск vless | sni=15d7fft.nl11.h1clayd.click fp=firefox sec=reality tr=tcp;
+2026-11-23 10:01;G;31.76.3.52:443;Швеция Стокгольм-1 vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;76
