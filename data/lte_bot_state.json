@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-24 09:25;R;172.64.148.193:443;Канада Торонто vless | sni=powered-by-surena.configfarsi695fce27aa549.workers.dev fp=chrome sec=tls tr=ws host=powered-by-surena.configfarsi695fce27aa549.workers.dev;"
+  "2026-11-24 09:31;R;195.216.168.101:9543;Франция Париж vless | sni=storage.yandexcloud.net fp=chrome flow=vision sec=reality tr=tcp;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828380,
   885828381,
   885828382,
   885828383,
@@ -103,6 +102,7 @@
   885828476,
   885828477,
   885828478,
-  885828479
+  885828479,
+  885828480
  ]
 }
