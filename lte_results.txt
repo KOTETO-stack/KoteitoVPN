@@ -342,3 +342,4 @@
 2026-11-24 09:31;R;195.216.168.101:9543;Франция Париж vless | sni=storage.yandexcloud.net fp=chrome flow=vision sec=reality tr=tcp;
 2026-11-24 09:46;R;178.172.227.124:10444;Беларусь Большое Стиклево vless | sni=ads.x5.ru fp=ios flow=vision sec=reality tr=tcp;
 2026-11-25 01:05;R;edge.bookmai.com:443;Соединенное Королевство Лондон vless | sni=mother-earth.fyi fp=firefox flow=vision sec=reality tr=tcp;
+2026-11-25 01:05;R;5.34.178.120:443;США Майами vless | sni=www.cloudflare.com fp=chrome flow=vision sec=reality tr=tcp;
