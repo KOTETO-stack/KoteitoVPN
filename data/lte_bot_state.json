@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-25 01:05;R;5.34.178.120:443;США Майами vless | sni=www.cloudflare.com fp=chrome flow=vision sec=reality tr=tcp;"
+  "2026-11-25 01:05;R;45.32.70.42:443;США Лос-Анджелес vless | sni=itunes.apple.com fp=chrome sec=reality tr=ws host=itunes.apple.com;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828384,
   885828385,
   885828386,
   885828387,
@@ -103,6 +102,7 @@
   885828480,
   885828481,
   885828483,
-  885828485
+  885828485,
+  885828486
  ]
 }

@@ -343,3 +343,4 @@
 2026-11-24 09:46;R;178.172.227.124:10444;Беларусь Большое Стиклево vless | sni=ads.x5.ru fp=ios flow=vision sec=reality tr=tcp;
 2026-11-25 01:05;R;edge.bookmai.com:443;Соединенное Королевство Лондон vless | sni=mother-earth.fyi fp=firefox flow=vision sec=reality tr=tcp;
 2026-11-25 01:05;R;5.34.178.120:443;США Майами vless | sni=www.cloudflare.com fp=chrome flow=vision sec=reality tr=tcp;
+2026-11-25 01:05;R;45.32.70.42:443;США Лос-Анджелес vless | sni=itunes.apple.com fp=chrome sec=reality tr=ws host=itunes.apple.com;
