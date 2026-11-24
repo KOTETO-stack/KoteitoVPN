@@ -32,14 +32,14 @@
     },
     {
       "field": "port",
-      "value": "8080",
+      "value": "8443",
       "weight": -4
     },
     {
       "field": "country",
       "value": "🇷🇺",
-      "weight": -6
+      "weight": -2
     }
   ],
-  "comment": "Пользователям в России рекомендуется использовать vless и reality на порту 443, избегая hysteria2 и none"
+  "comment": "Пользователям в России рекомендуется использовать vless и reality для повышения приоритета, а hysteria2 и none для понижения"
 }
