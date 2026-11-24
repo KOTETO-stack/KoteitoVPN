@@ -38,3 +38,4 @@
 2026-11-15 18:57;G;4935e4t.de25.h1clayd.click:443;Британия Лондон vless;463
 2026-11-13 11:06;G;79.182.39.131:443;Нидерланды Керкраде vless;303
 2026-11-17 10:49;R;195.206.235.234:443;Великобритания Лондон vless;
+2026-11-23 10:01;G;31.76.3.52:443;Швеция Стокгольм-1 vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;76
