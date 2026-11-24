@@ -341,3 +341,4 @@
 2026-11-24 09:25;R;172.64.148.193:443;Канада Торонто vless | sni=powered-by-surena.configfarsi695fce27aa549.workers.dev fp=chrome sec=tls tr=ws host=powered-by-surena.configfarsi695fce27aa549.workers.dev;
 2026-11-24 09:31;R;195.216.168.101:9543;Франция Париж vless | sni=storage.yandexcloud.net fp=chrome flow=vision sec=reality tr=tcp;
 2026-11-24 09:46;R;178.172.227.124:10444;Беларусь Большое Стиклево vless | sni=ads.x5.ru fp=ios flow=vision sec=reality tr=tcp;
+2026-11-25 01:05;R;edge.bookmai.com:443;Соединенное Королевство Лондон vless | sni=mother-earth.fyi fp=firefox flow=vision sec=reality tr=tcp;
