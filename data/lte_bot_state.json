@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-24 09:20;R;201.8.71.230:443;США Орем vless | sni=961ec0g.nl13.h1clayd.click fp=firefox sec=reality tr=grpc;"
+  "2026-11-24 09:20;R;45.76.172.197:443;США Лос-Анджелес vless | sni=itunes.apple.com sec=reality tr=ws host=itunes.apple.com;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828374,
   885828375,
   885828376,
   885828377,
@@ -103,6 +102,7 @@
   885828470,
   885828471,
   885828472,
-  885828473
+  885828473,
+  885828474
  ]
 }
