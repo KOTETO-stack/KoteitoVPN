@@ -345,3 +345,4 @@
 2026-11-25 01:05;R;45.32.70.42:443;США Лос-Анджелес vless | sni=itunes.apple.com fp=chrome sec=reality tr=ws host=itunes.apple.com;
 2026-11-25 01:05;R;153.56.229.207:443;Турция Стамбул vless | sni=4935e4t.de25.h1clayd.click fp=firefox flow=vision sec=reality tr=tcp;
 2026-11-25 01:05;R;31.76.3.52:443;Швеция Стокгольм vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;
+2026-11-25 01:05;R;94.183.179.64:443;Британия Сити vless | sni=gb2.soshelper.space fp=chrome flow=vision sec=reality tr=tcp;

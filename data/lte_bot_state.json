@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-25 01:05;R;31.76.3.52:443;Швеция Стокгольм vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;"
+  "2026-11-25 01:05;R;94.183.179.64:443;Британия Сити vless | sni=gb2.soshelper.space fp=chrome flow=vision sec=reality tr=tcp;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828387,
   885828388,
   885828389,
   885828390,
@@ -103,6 +102,7 @@
   885828485,
   885828486,
   885828488,
-  885828482
+  885828482,
+  885828484
  ]
 }
