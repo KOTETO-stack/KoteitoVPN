@@ -337,3 +337,4 @@
 2026-11-24 09:22;R;89.106.88.126:443;Эстония Таллин vless | sni=ee126.own-homelab.cloud fp=firefox sec=reality tr=grpc;
 2026-11-24 09:22;R;13.141.36.10:443;Румыния Бухарест-1 vless | sni=5d0319t.nl7.h1clayd.click fp=firefox sec=reality tr=tcp;
 2026-11-24 09:25;R;195.206.235.234:443;Великобритания Лондон vless | sni=4935e4t.de25.h1clayd.click fp=chrome flow=vision sec=reality tr=tcp;
+2026-11-24 09:25;R;13.141.36.10:443;Румыния Бухарест-1 vless | sni=5d0319t.nl7.h1clayd.click fp=firefox sec=reality tr=tcp;
