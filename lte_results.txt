@@ -333,3 +333,4 @@
 2026-11-24 09:19;G;31.76.3.52:443;Швеция Стокгольм vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;55
 2026-11-24 09:19;R;79.182.39.131:443;Нидерланды Керкраде vless | sni=717252g.nl8.h1clayd.click fp=chrome sec=reality tr=grpc;
 2026-11-24 09:20;R;45.61.186.3:443;США Майами vless | sni=caissuers.microsoft.com fp=chrome flow=vision sec=reality tr=tcp;
+2026-11-24 09:20;R;201.8.71.230:443;США Орем vless | sni=961ec0g.nl13.h1clayd.click fp=firefox sec=reality tr=grpc;

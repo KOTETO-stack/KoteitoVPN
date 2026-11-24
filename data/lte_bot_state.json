@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-24 09:20;R;45.61.186.3:443;США Майами vless | sni=caissuers.microsoft.com fp=chrome flow=vision sec=reality tr=tcp;"
+  "2026-11-24 09:20;R;201.8.71.230:443;США Орем vless | sni=961ec0g.nl13.h1clayd.click fp=firefox sec=reality tr=grpc;"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828373,
   885828374,
   885828375,
   885828376,
@@ -103,6 +102,7 @@
   885828469,
   885828470,
   885828471,
-  885828472
+  885828472,
+  885828473
  ]
 }
