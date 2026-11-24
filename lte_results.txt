@@ -335,3 +335,4 @@
 2026-11-24 09:20;R;45.61.186.3:443;США Майами vless | sni=caissuers.microsoft.com fp=chrome flow=vision sec=reality tr=tcp;
 2026-11-24 09:20;R;201.8.71.230:443;США Орем vless | sni=961ec0g.nl13.h1clayd.click fp=firefox sec=reality tr=grpc;
 2026-11-24 09:20;R;45.76.172.197:443;США Лос-Анджелес vless | sni=itunes.apple.com sec=reality tr=ws host=itunes.apple.com;
+2026-11-24 09:22;R;89.106.88.126:443;Эстония Таллин vless | sni=ee126.own-homelab.cloud fp=firefox sec=reality tr=grpc;
