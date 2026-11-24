@@ -1,10 +1,9 @@
 {
  "last_batch": [
-  "2026-11-23 14:00;R;50.7.90.26:443;ФРГ Франкфурт vless | sni=creek.oakhollow.top fp=firefox sec=reality tr=grpc;"
+  "2026-11-24 09:19;G;31.76.3.52:443;Швеция Стокгольм vless | sni=payablemeta.cleanfoodshop.org fp=firefox sec=tls tr=ws host=payablemeta.cleanfoodshop.org;55"
  ],
  "offset": 885828183,
  "seen_updates": [
-  885828370,
   885828371,
   885828372,
   885828373,
@@ -103,6 +102,7 @@
   885828466,
   885828467,
   885828468,
-  885828469
+  885828469,
+  885828470
  ]
 }
