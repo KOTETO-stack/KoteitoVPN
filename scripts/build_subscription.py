@@ -50,6 +50,12 @@ build_subscription.py
    (только для просмотра, без ссылок);
  - MOBILE_QUOTA = 0 выключает добавку.
 
+Экспериментальные слоты (scripts/explore.py, выключаются EXPLORE_ENABLED = False в explore.py):
+ - после мобильной добавки наверх КАЖДОЙ подписки ставятся контрольные и разнообразные серверы
+   для замера на LTE (до 16 новых и 2 контрольных), подписка обрезается с конца до MAX_SERVERS;
+ - список для замера пишется в output/subscription_explore_list.txt;
+ - любая ошибка модуля не ломает сборку.
+
 Дополнительные сигналы (scripts/net_signals.py, выключаются SIGNALS_ENABLED = False):
  - списки IP, заблокированных РКН (antifilter): такие серверы в подписки не попадают совсем
    (если сервер не замерен зелёным на мобильной сети и списки не выглядят слишком широкими,
@@ -900,6 +906,14 @@ def main():
         added = add_mobile(groups, mobile)
         print(f"Мобильная добавка: добавлено в подписки {added} (квота {MOBILE_QUOTA} на подписку).")
         write_mobile_list(groups, probe)
+
+    # Экспериментальные слоты: разнообразные и контрольные серверы наверху каждой подписки
+    # (scripts/explore.py). Любая ошибка модуля не ломает сборку.
+    try:
+        import explore
+        groups = explore.apply(groups, configs, MAX_SERVERS)
+    except Exception as e:
+        print("Эксперимент (explore.py) пропущен: %s" % e)
 
     written = []
     for i, group in enumerate(groups):
