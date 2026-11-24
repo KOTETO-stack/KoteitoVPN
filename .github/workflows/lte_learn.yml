@@ -1,0 +1,15 @@
+name: LTE Learn
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Анализ замеров LTE
+        run: python3 scripts/lte_learn.py
