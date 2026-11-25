@@ -6,21 +6,6 @@
       "weight": -10
     },
     {
-      "field": "country",
-      "value": "🇷🇺",
-      "weight": -5
-    },
-    {
-      "field": "security",
-      "value": "none",
-      "weight": -5
-    },
-    {
-      "field": "port",
-      "value": "443",
-      "weight": 5
-    },
-    {
       "field": "protocol",
       "value": "vless",
       "weight": 5
@@ -28,8 +13,18 @@
     {
       "field": "security",
       "value": "reality",
-      "weight": 5
+      "weight": 3
+    },
+    {
+      "field": "port",
+      "value": "443",
+      "weight": 2
+    },
+    {
+      "field": "country",
+      "value": "🇷🇺",
+      "weight": -5
     }
   ],
-  "comment": "Понижаем приоритет hysteria2 и серверов в России, а также тех, что используют незащищенное подключение. Повышаем приоритет серверов с протоколом vless, безопасностью reality и портом 443."
+  "comment": "Протокол hysteria2 имеет низкий приоритет из-за проблем с подключением, в то время как vless и reality имеют более высокий приоритет из-за их популярности и безопасности"
 }
