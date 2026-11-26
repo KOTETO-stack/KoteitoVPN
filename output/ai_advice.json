@@ -2,29 +2,29 @@
   "rules": [
     {
       "field": "protocol",
-      "value": "hysteria2",
-      "weight": -10
-    },
-    {
-      "field": "protocol",
       "value": "vless",
-      "weight": 5
+      "weight": 10
     },
     {
       "field": "security",
       "value": "reality",
-      "weight": 3
+      "weight": 8
     },
     {
       "field": "port",
       "value": "443",
-      "weight": 2
+      "weight": 12
     },
     {
       "field": "country",
-      "value": "🇷🇺",
-      "weight": -5
+      "value": "🇺🇸",
+      "weight": 6
+    },
+    {
+      "field": "protocol",
+      "value": "hysteria2",
+      "weight": -15
     }
   ],
-  "comment": "Протокол hysteria2 имеет низкий приоритет из-за проблем с подключением, в то время как vless и reality имеют более высокий приоритет из-за их популярности и безопасности"
+  "comment": "Протокол vless и безопасность reality имеют высокий приоритет, порт 443 также предпочтителен, а страна США имеет умеренный приоритет, но hysteria2 имеет низкий приоритет из-за проблем с подключением"
 }
