@@ -22,9 +22,19 @@
     },
     {
       "field": "country",
-      "value": "🇷🇺",
+      "value": "🇺🇸",
       "weight": -5
+    },
+    {
+      "field": "security",
+      "value": "none",
+      "weight": -8
+    },
+    {
+      "field": "protocol",
+      "value": "trojan",
+      "weight": 2
     }
   ],
-  "comment": "Понижаем приоритет hysteria2 и серверов в России, повышаем приоритет vless, reality и порт 443"
+  "comment": "Понижаем приоритет hysteria2 и none, повышаем приоритет vless и reality"
 }
